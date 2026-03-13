@@ -721,8 +721,16 @@ try {
         Invoke-Git -Args @("config", "user.name", $committer.Name) | Out-Null
         Invoke-Git -Args @("config", "user.email", $committer.Email) | Out-Null
 
-        Write-Step "Publishing snapshot to $TargetBranch (single-commit branch)"
-        Invoke-Git -Args @("checkout", "--orphan", $TargetBranch) | Out-Null
+        if ((Get-TrimmedText $targetRemoteOid) -ne "") {
+            Write-Step "Loading current public $TargetBranch"
+            Invoke-Git -Args @("fetch", "--no-tags", "public", "refs/heads/${TargetBranch}:refs/remotes/public/$TargetBranch") | Out-Null
+            Invoke-Git -Args @("checkout", "-B", $TargetBranch, "refs/remotes/public/$TargetBranch") | Out-Null
+        } else {
+            Write-Step "Creating initial public $TargetBranch"
+            Invoke-Git -Args @("checkout", "--orphan", $TargetBranch) | Out-Null
+        }
+
+        Write-Step "Publishing snapshot to $TargetBranch (one aggregated commit)"
         Sync-SnapshotToRepo -SnapshotDir $snapshotDir -RepoDir $workRepoDir
         Invoke-Git -Args @("add", "-A") | Out-Null
 
@@ -733,13 +741,9 @@ try {
             -SourceRefValue $SourceRef `
             -SourceCommit $sourceCommit `
             -AppendSourceCommit:$IncludeSourceCommit
-        Invoke-GitCommit -Message $targetMessage
+        Invoke-GitCommit -Message $targetMessage -AllowEmpty
 
         $publishedCommit = Get-FirstOutputLine -Lines (Invoke-Git -Args @("rev-parse", "HEAD")).Output
-        $targetCount = Get-FirstOutputLine -Lines (Invoke-Git -Args @("rev-list", "--count", $TargetBranch)).Output
-        if ($targetCount -ne "1") {
-            throw "Local target branch $TargetBranch is expected to have exactly 1 commit, got $targetCount."
-        }
 
         Publish-BranchRef -RemoteName "public" -BranchName $TargetBranch -Commitish $publishedCommit -RemoteExpectedOid $targetRemoteOid -DryRun:$publishDryRun
 
@@ -768,7 +772,7 @@ try {
 
     Write-Step "Publish completed"
     Write-Host "Published source commit: $sourceCommit"
-    Write-Host "Updated target branch: $TargetBranch (always single commit)"
+    Write-Host "Updated target branch: $TargetBranch (appends one aggregated commit per publish)"
     if ($shouldPublishRelease) {
         Write-Host "Updated release branch: $releaseBranch"
     }
