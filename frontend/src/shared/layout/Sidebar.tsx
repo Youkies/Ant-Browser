@@ -18,12 +18,17 @@ import {
   Tag,
   type LucideIcon
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import clsx from 'clsx'
 import { useLayoutStore } from '../../store/layoutStore'
 import { projectConfig, navigationConfig } from '../../config'
+import { WindowToggleMaximise } from '../../wailsjs/runtime/runtime'
 
-// 导入应用logo
 import logoImage from '../../resources/images/logo.png'
+
+const dragRegionStyle = {
+  ['--wails-draggable' as string]: 'drag',
+} as CSSProperties
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -55,22 +60,24 @@ export function Sidebar() {
       'bg-[var(--color-bg-surface)] flex flex-col transition-all duration-300 border-r border-[var(--color-border-default)]',
       sidebarCollapsed ? 'w-16' : 'w-60'
     )}>
-      {/* Logo */}
-      <div className={clsx(
-        'h-14 flex items-center border-b border-[var(--color-border-muted)]',
-        sidebarCollapsed ? 'justify-center px-2' : 'px-5'
-      )}>
+      <div
+        className={clsx(
+          'h-14 flex items-center border-b border-[var(--color-border-muted)] select-none',
+          sidebarCollapsed ? 'justify-center px-2' : 'px-5'
+        )}
+        style={dragRegionStyle}
+        onDoubleClick={() => WindowToggleMaximise()}
+      >
         {!sidebarCollapsed ? (
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[var(--color-accent)] flex items-center justify-center">
-              <img 
-                src={logoImage} 
-                alt="应用Logo" 
+              <img
+                src={logoImage}
+                alt="应用 Logo"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // 图片加载失败时显示首字母
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement?.classList.add('fallback-logo');
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.parentElement?.classList.add('fallback-logo')
                 }}
               />
               <span className="text-xs font-bold text-[var(--color-text-inverse)] hidden fallback-content">
@@ -83,14 +90,13 @@ export function Sidebar() {
           </div>
         ) : (
           <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--color-accent)] flex items-center justify-center">
-            <img 
-              src={logoImage} 
-              alt="应用Logo" 
+            <img
+              src={logoImage}
+              alt="应用 Logo"
               className="w-full h-full object-cover"
               onError={(e) => {
-                // 图片加载失败时显示首字母
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement?.classList.add('fallback-logo');
+                e.currentTarget.style.display = 'none'
+                e.currentTarget.parentElement?.classList.add('fallback-logo')
               }}
             />
             <span className="text-xs font-bold text-[var(--color-text-inverse)] hidden fallback-content">
@@ -100,7 +106,6 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-6 overflow-y-auto">
         {navigationConfig.map((section) => (
           <div key={section.title}>
@@ -113,7 +118,7 @@ export function Sidebar() {
               {section.items.map((item) => {
                 const Icon = getIcon(item.icon)
                 const isActive = location.pathname === item.path
-                
+
                 return (
                   <Link
                     key={item.path}
@@ -124,8 +129,8 @@ export function Sidebar() {
                       isActive
                         ? 'bg-[var(--color-accent)] text-[var(--color-text-inverse)] shadow-sm'
                         : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-muted)] hover:text-[var(--color-text-primary)]',
-                      sidebarCollapsed 
-                        ? 'justify-center w-10 h-10 mx-auto' 
+                      sidebarCollapsed
+                        ? 'justify-center w-10 h-10 mx-auto'
                         : 'px-3 py-2.5 gap-3'
                     )}
                   >
@@ -141,14 +146,13 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Toggle Button */}
       <div className="p-3 border-t border-[var(--color-border-muted)]">
         <button
           onClick={toggleSidebar}
           className={clsx(
             'flex items-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-accent-muted)] hover:text-[var(--color-text-secondary)] transition-all duration-150',
-            sidebarCollapsed 
-              ? 'justify-center w-10 h-10 mx-auto' 
+            sidebarCollapsed
+              ? 'justify-center w-10 h-10 mx-auto'
               : 'w-full px-3 py-2 gap-3'
           )}
           title={sidebarCollapsed ? '展开' : '收起'}

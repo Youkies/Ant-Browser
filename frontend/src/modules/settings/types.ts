@@ -30,7 +30,7 @@ export interface AppSettings {
 export const defaultSettings: AppSettings = {
   appName: 'Ant Browser',
   appDescription: '基于 Wails + React 的桌面应用',
-  theme: 'light',
+  theme: 'system',
   primaryColor: '#3B82F6',
   language: 'zh-CN',
   enableNotifications: true,

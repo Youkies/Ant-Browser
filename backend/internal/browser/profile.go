@@ -76,26 +76,27 @@ func (m *Manager) loadProfiles() {
 			updatedAt = createdAt
 		}
 		m.Profiles[profileId] = &Profile{
-			ProfileId:          profileId,
-			ProfileName:        item.ProfileName,
-			UserDataDir:        item.UserDataDir,
-			CoreId:             normalizeProfileCoreID(item.CoreId),
-			FingerprintArgs:    append([]string{}, item.FingerprintArgs...),
-			ProxyId:            item.ProxyId,
-			ProxyConfig:        item.ProxyConfig,
-			ProxyBindSourceID:  item.ProxyBindSourceID,
-			ProxyBindSourceURL: item.ProxyBindSourceURL,
-			ProxyBindName:      item.ProxyBindName,
-			ProxyBindUpdatedAt: item.ProxyBindUpdatedAt,
-			LaunchArgs:         append([]string{}, item.LaunchArgs...),
-			Tags:               append([]string{}, item.Tags...),
-			Keywords:           append([]string{}, item.Keywords...),
-			Running:            false,
-			DebugPort:          0,
-			Pid:                0,
-			LastError:          "",
-			CreatedAt:          createdAt,
-			UpdatedAt:          updatedAt,
+			ProfileId:               profileId,
+			ProfileName:             item.ProfileName,
+			UserDataDir:             item.UserDataDir,
+			CoreId:                  normalizeProfileCoreID(item.CoreId),
+			FingerprintArgs:         append([]string{}, item.FingerprintArgs...),
+			ProxyId:                 item.ProxyId,
+			ProxyConfig:             item.ProxyConfig,
+			ProxyBindSourceID:       item.ProxyBindSourceID,
+			ProxyBindSourceURL:      item.ProxyBindSourceURL,
+			ProxyBindName:           item.ProxyBindName,
+			ProxyBindUpdatedAt:      item.ProxyBindUpdatedAt,
+			LaunchArgs:              append([]string{}, item.LaunchArgs...),
+			Tags:                    append([]string{}, item.Tags...),
+			Keywords:                append([]string{}, item.Keywords...),
+			InitialVerificationDone: item.InitialVerificationDone,
+			Running:                 false,
+			DebugPort:               0,
+			Pid:                     0,
+			LastError:               "",
+			CreatedAt:               createdAt,
+			UpdatedAt:               updatedAt,
 		}
 	}
 	log.Info("浏览器配置从文件加载完成", logger.F("count", len(m.Profiles)))
@@ -120,22 +121,23 @@ func (m *Manager) SaveProfiles() error {
 	profiles := make([]ProfileConfig, 0, len(m.Profiles))
 	for _, profile := range m.Profiles {
 		profiles = append(profiles, ProfileConfig{
-			ProfileId:          profile.ProfileId,
-			ProfileName:        profile.ProfileName,
-			UserDataDir:        profile.UserDataDir,
-			CoreId:             normalizeProfileCoreID(profile.CoreId),
-			FingerprintArgs:    append([]string{}, profile.FingerprintArgs...),
-			ProxyId:            profile.ProxyId,
-			ProxyConfig:        profile.ProxyConfig,
-			ProxyBindSourceID:  profile.ProxyBindSourceID,
-			ProxyBindSourceURL: profile.ProxyBindSourceURL,
-			ProxyBindName:      profile.ProxyBindName,
-			ProxyBindUpdatedAt: profile.ProxyBindUpdatedAt,
-			LaunchArgs:         append([]string{}, profile.LaunchArgs...),
-			Tags:               append([]string{}, profile.Tags...),
-			Keywords:           append([]string{}, profile.Keywords...),
-			CreatedAt:          profile.CreatedAt,
-			UpdatedAt:          profile.UpdatedAt,
+			ProfileId:               profile.ProfileId,
+			ProfileName:             profile.ProfileName,
+			UserDataDir:             profile.UserDataDir,
+			CoreId:                  normalizeProfileCoreID(profile.CoreId),
+			FingerprintArgs:         append([]string{}, profile.FingerprintArgs...),
+			ProxyId:                 profile.ProxyId,
+			ProxyConfig:             profile.ProxyConfig,
+			ProxyBindSourceID:       profile.ProxyBindSourceID,
+			ProxyBindSourceURL:      profile.ProxyBindSourceURL,
+			ProxyBindName:           profile.ProxyBindName,
+			ProxyBindUpdatedAt:      profile.ProxyBindUpdatedAt,
+			LaunchArgs:              append([]string{}, profile.LaunchArgs...),
+			Tags:                    append([]string{}, profile.Tags...),
+			Keywords:                append([]string{}, profile.Keywords...),
+			InitialVerificationDone: profile.InitialVerificationDone,
+			CreatedAt:               profile.CreatedAt,
+			UpdatedAt:               profile.UpdatedAt,
 		})
 	}
 	m.Config.Browser.Profiles = profiles
@@ -218,11 +220,6 @@ func (m *Manager) Create(input ProfileInput) (*Profile, error) {
 	m.InitData()
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
-
-	// Check Profile Limit
-	if m.Config.App.MaxProfileLimit > 0 && len(m.Profiles) >= m.Config.App.MaxProfileLimit {
-		return nil, fmt.Errorf("实例数量已达上限 (%d个)，无法创建新的实例。请兑换额度后重试！", m.Config.App.MaxProfileLimit)
-	}
 
 	now := time.Now().Format(time.RFC3339)
 	profileId := uuid.NewString()
@@ -406,12 +403,6 @@ func (m *Manager) Copy(profileId string, newName string) (*Profile, error) {
 	m.InitData()
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
-
-	// Check Profile Limit
-	if m.Config.App.MaxProfileLimit > 0 && len(m.Profiles) >= m.Config.App.MaxProfileLimit {
-		log.Error("复制实例失败: 达到数量上限", logger.F("limit", m.Config.App.MaxProfileLimit))
-		return nil, fmt.Errorf("实例数量已达上限 (%d个)，无法复制实例。请兑换额度后重试！", m.Config.App.MaxProfileLimit)
-	}
 
 	src, exists := m.Profiles[profileId]
 	if !exists {

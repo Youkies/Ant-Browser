@@ -8,6 +8,9 @@ var defaultVerificationURLs = []string{
 
 // BuildLaunchArgs 构建启动参数
 func BuildLaunchArgs(args []string, profile *Profile) []string {
+	if profile != nil && profile.InitialVerificationDone {
+		return args
+	}
 	args = append(args, defaultVerificationURLs...)
 	return args
 }

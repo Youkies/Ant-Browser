@@ -123,8 +123,6 @@ export function FetchRemoteAuthorProfile(arg1:string,arg2:number):Promise<Record
 
 export function ForceQuit():Promise<void>;
 
-export function GenerateCDKeys(arg1:number):Promise<Array<string>>;
-
 export function GetAppConfig():Promise<Record<string, any>>;
 
 export function GetAppLogs():Promise<Array<logger.MemoryLogEntry>>;
@@ -136,8 +134,6 @@ export function GetDashboardStats():Promise<Record<string, any>>;
 export function GetInterceptor():Promise<logger.MethodInterceptor>;
 
 export function GetLaunchServerInfo():Promise<Record<string, any>>;
-
-export function GetLicenseStatus():Promise<backend.LicenseStatus>;
 
 export function GetLogLevel():Promise<string>;
 
@@ -154,10 +150,6 @@ export function OpenCorePath(arg1:string):Promise<void>;
 export function OpenUserDataDir(arg1:string):Promise<void>;
 
 export function QuitAppOnly():Promise<void>;
-
-export function RedeemCDKey(arg1:string):Promise<void>;
-
-export function RedeemGithubStar():Promise<void>;
 
 export function ReloadConfig():Promise<void>;
 

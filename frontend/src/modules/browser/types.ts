@@ -79,6 +79,7 @@ export interface BrowserProxy {
   proxyId: string
   proxyName: string
   proxyConfig: string
+  preProxyId?: string
   dnsServers?: string
   groupName?: string
   sourceId?: string

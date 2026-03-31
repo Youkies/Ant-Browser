@@ -76,6 +76,8 @@ interface ProxyDisplayInfo {
   proxyId: string
   proxyName: string
   proxyConfig: string
+  preProxyId: string
+  preProxyName: string
   groupName: string
   sourceId: string
   sourceUrl: string
@@ -390,12 +392,15 @@ function parseProxyInfo(proxyConfig: string): { type: string; server: string; po
 }
 
 function toDisplayList(proxies: BrowserProxy[]): ProxyDisplayInfo[] {
+  const proxyNameMap = new Map(proxies.map(proxy => [proxy.proxyId, proxy.proxyName]))
   return proxies.map(p => {
     const info = parseProxyInfo(p.proxyConfig)
     return {
       proxyId: p.proxyId,
       proxyName: p.proxyName,
       proxyConfig: p.proxyConfig,
+      preProxyId: p.preProxyId || '',
+      preProxyName: proxyNameMap.get(p.preProxyId || '') || '',
       groupName: p.groupName || '',
       sourceId: p.sourceId || '',
       sourceUrl: p.sourceUrl || '',
@@ -603,6 +608,8 @@ function buildImportPreview(candidates: ImportCandidate[], groupName: string): P
       proxyId: `preview-${index}`,
       proxyName: candidate.proxyName,
       proxyConfig: candidate.proxyConfig,
+      preProxyId: '',
+      preProxyName: '',
       groupName,
       sourceId: '',
       sourceUrl: '',
@@ -1003,7 +1010,7 @@ export function ProxyPoolPage() {
 
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingProxy, setEditingProxy] = useState<BrowserProxy | null>(null)
-  const [editForm, setEditForm] = useState({ proxyName: '', proxyConfig: '', dnsServers: '', groupName: '' })
+  const [editForm, setEditForm] = useState({ proxyName: '', proxyConfig: '', dnsServers: '', groupName: '', preProxyId: '' })
   const [saving, setSaving] = useState(false)
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -1118,8 +1125,9 @@ export function ProxyPoolPage() {
   // 直接保存完整列表，内置代理保护由后端负责
   const saveProxies = useCallback(async (list: BrowserProxy[]) => {
     await saveBrowserProxies(list)
-    setProxies(list)
-    setDisplayList(toDisplayList(list))
+    const refreshed = ensureBuiltinProxies(await fetchBrowserProxies())
+    setProxies(refreshed)
+    setDisplayList(toDisplayList(refreshed))
     // 刷新分组列表（可能有新分组加入）
     const grps = await fetchBrowserProxyGroups()
     setGroups(grps)
@@ -1127,6 +1135,28 @@ export function ProxyPoolPage() {
 
   const sourceMetas = useMemo(() => collectURLImportSources(proxies), [proxies])
   const hasURLImportSources = sourceMetas.length > 0
+  const availablePreProxyOptions = useMemo(() => {
+    const editingProxyId = editingProxy?.proxyId || ''
+    const currentPreProxyId = editForm.preProxyId || ''
+    return proxies
+      .filter(proxy => {
+        if (proxy.proxyId === '__direct__' || proxy.proxyId === editingProxyId) return false
+        if (proxy.proxyId === currentPreProxyId) return true
+        return !(proxy.preProxyId || '').trim()
+      })
+      .map(proxy => ({
+        value: proxy.proxyId,
+        label: proxy.proxyName || proxy.proxyId,
+      }))
+  }, [editForm.preProxyId, editingProxy?.proxyId, proxies])
+
+  const detachDeletedPreProxyRefs = useCallback((list: BrowserProxy[], deletedIds: Set<string>) => (
+    list.map(proxy => (
+      deletedIds.has(proxy.preProxyId || '')
+        ? { ...proxy, preProxyId: '' }
+        : proxy
+    ))
+  ), [])
 
   const refreshSingleSource = useCallback(async (sourceId: string, silent: boolean) => {
     const currentList = proxiesRef.current
@@ -1337,7 +1367,11 @@ export function ProxyPoolPage() {
 
   const handleBatchDeleteConfirm = async () => {
     try {
-      const newProxies = proxies.filter(p => !selectedIds.has(p.proxyId))
+      const deletedIds = new Set(selectedIds)
+      const newProxies = detachDeletedPreProxyRefs(
+        proxies.filter(p => !deletedIds.has(p.proxyId)),
+        deletedIds,
+      )
       await saveProxies(newProxies)
       toast.success(`已删除 ${selectedIds.size} 个代理`)
       setSelectedIds(new Set())
@@ -1539,11 +1573,14 @@ export function ProxyPoolPage() {
 
   const renderProxyName = (record: ProxyDisplayInfo) => {
     const ipHealth = ipHealthMap[record.proxyId]
-    const subtitle = record.proxyConfig === 'direct://'
-      ? '系统直连，无需桥接'
-      : BUILTIN_PROXY_IDS.has(record.proxyId)
-        ? '本地默认代理入口'
-        : ''
+    const metaLines = [
+      record.proxyConfig === 'direct://'
+        ? '系统直连，无需桥接'
+        : BUILTIN_PROXY_IDS.has(record.proxyId)
+          ? '本地默认代理入口'
+          : '',
+      record.preProxyName ? `前置节点：${record.preProxyName}` : '',
+    ].filter(Boolean)
 
     return (
       <div className="min-w-0">
@@ -1561,11 +1598,11 @@ export function ProxyPoolPage() {
             </span>
           )}
         </div>
-        {subtitle && (
-          <div className="mt-1 text-[11px] text-[var(--color-text-muted)] truncate" title={subtitle}>
-            {subtitle}
+        {metaLines.map(line => (
+          <div key={line} className="mt-1 text-[11px] text-[var(--color-text-muted)] truncate" title={line}>
+            {line}
           </div>
-        )}
+        ))}
       </div>
     )
   }
@@ -1705,7 +1742,13 @@ export function ProxyPoolPage() {
     const proxy = proxies.find(p => p.proxyId === record.proxyId)
     if (proxy) {
       setEditingProxy(proxy)
-      setEditForm({ proxyName: proxy.proxyName, proxyConfig: proxy.proxyConfig, dnsServers: proxy.dnsServers || '', groupName: proxy.groupName || '' })
+      setEditForm({
+        proxyName: proxy.proxyName,
+        proxyConfig: proxy.proxyConfig,
+        dnsServers: proxy.dnsServers || '',
+        groupName: proxy.groupName || '',
+        preProxyId: proxy.preProxyId || '',
+      })
       setEditModalOpen(true)
     }
   }
@@ -1717,7 +1760,14 @@ export function ProxyPoolPage() {
     try {
       const newProxies = proxies.map(p =>
         p.proxyId === editingProxy.proxyId
-          ? { ...p, proxyName: editForm.proxyName, proxyConfig: editForm.proxyConfig, dnsServers: editForm.dnsServers, groupName: editForm.groupName }
+          ? {
+            ...p,
+            proxyName: editForm.proxyName,
+            proxyConfig: editForm.proxyConfig,
+            dnsServers: editForm.dnsServers,
+            groupName: editForm.groupName,
+            preProxyId: editForm.preProxyId || undefined,
+          }
           : p
       )
       await saveProxies(newProxies)
@@ -1738,7 +1788,11 @@ export function ProxyPoolPage() {
   const handleDeleteConfirm = async () => {
     if (!deletingId) return
     try {
-      const newProxies = proxies.filter(p => p.proxyId !== deletingId)
+      const deletedIds = new Set([deletingId])
+      const newProxies = detachDeletedPreProxyRefs(
+        proxies.filter(p => p.proxyId !== deletingId),
+        deletedIds,
+      )
       await saveProxies(newProxies)
       setSelectedIds(prev => { const next = new Set(prev); next.delete(deletingId); return next })
       toast.success('代理已删除')
@@ -2160,6 +2214,17 @@ export function ProxyPoolPage() {
               {groups.map(g => <option key={g} value={g} />)}
             </datalist>
           </FormItem>
+          <FormItem label="前置节点（可选）">
+            <Select
+              value={editForm.preProxyId}
+              onChange={e => setEditForm(prev => ({ ...prev, preProxyId: e.target.value }))}
+              options={[
+                { value: '', label: '无前置节点' },
+                ...availablePreProxyOptions,
+              ]}
+            />
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">仅支持单层前置节点，实例列表会自动复用这里的设置。</p>
+          </FormItem>
           <FormItem label="代理配置">
             <Textarea value={editForm.proxyConfig} onChange={e => setEditForm(prev => ({ ...prev, proxyConfig: e.target.value }))} rows={10} placeholder="支持 Clash YAML、http://、https://、socks5://、anytls:// 等代理配置" />
           </FormItem>
@@ -2228,6 +2293,12 @@ export function ProxyPoolPage() {
                     最近刷新：{new Date(currentProxyDetail.sourceLastRefreshAt).toLocaleString()}
                   </div>
                 )}
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1 md:col-span-2">
+                <div className="text-xs text-[var(--color-text-muted)]">前置节点</div>
+                <div className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {currentProxyDetail.preProxyName || '未配置'}
+                </div>
               </div>
             </div>
 

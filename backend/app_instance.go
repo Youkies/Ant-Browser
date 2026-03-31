@@ -76,6 +76,7 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	}
 	sanitizedProfileLaunchArgs, managedProfileArgs := sanitizeManagedLaunchArgs(profile.LaunchArgs)
 	sanitizedExtraLaunchArgs, managedExtraArgs := sanitizeManagedLaunchArgs(normalizedExtraLaunchArgs)
+	completeInitialVerification := !profile.InitialVerificationDone
 	logManagedLaunchArgOverrides(log, profileId, "profile.launchArgs", managedProfileArgs)
 	logManagedLaunchArgOverrides(log, profileId, "start.extraLaunchArgs", managedExtraArgs)
 
@@ -130,7 +131,7 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		logger.F("profile_proxy_config", profile.ProxyConfig),
 		logger.F("resolved_proxy_config", resolvedProxyConfig),
 	)
-	if supported, errorMsg := proxy.ValidateProxyConfig(resolvedProxyConfig, proxies, profile.ProxyId); !supported {
+	if supported, errorMsg := proxy.ValidateProxyChainConfig(resolvedProxyConfig, proxies, profile.ProxyId); !supported {
 		startErr := fmt.Errorf("实例启动失败：%s", errorMsg)
 		profile.LastError = startErr.Error()
 		log.Error("代理配置无效", logger.F("profile_id", profileId), logger.F("proxy_id", profile.ProxyId), logger.F("error", errorMsg), logger.F("reason", startErr.Error()))
@@ -139,7 +140,7 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 
 	if proxy.IsSingBoxProtocol(resolvedProxyConfig) {
 		// hysteria2 / tuic → sing-box 桥接
-		socksURL, bridgeErr := a.singboxMgr.EnsureBridge(resolvedProxyConfig, proxies, profile.ProxyId)
+		socksURL, bridgeErr := proxy.EnsureSingBoxBridgeChain(a.singboxMgr, a.xrayMgr, resolvedProxyConfig, proxies, profile.ProxyId)
 		if bridgeErr != nil {
 			startErr := fmt.Errorf("实例启动失败：代理桥接启动失败（sing-box）。原因：%v。请检查代理节点配置、sing-box 可执行文件是否存在，以及本地端口是否被占用。", bridgeErr)
 			log.Error("代理桥接失败(sing-box)", logger.F("error", bridgeErr.Error()), logger.F("reason", startErr.Error()))
@@ -155,9 +156,9 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		}
 		effectiveProxy = socksURL
 		log.Info("sing-box 桥接成功", logger.F("socks_url", socksURL))
-	} else if proxy.RequiresBridge(resolvedProxyConfig, proxies, profile.ProxyId) {
+	} else if proxy.RequiresXrayBridgeForChain(resolvedProxyConfig, proxies, profile.ProxyId) {
 		// vmess / vless / trojan / ss → xray 桥接
-		socksURL, bridgeKey, bridgeErr := a.xrayMgr.AcquireBridge(resolvedProxyConfig, proxies, profile.ProxyId)
+		socksURL, bridgeKey, bridgeErr := proxy.AcquireXrayBridgeChain(a.xrayMgr, a.singboxMgr, resolvedProxyConfig, proxies, profile.ProxyId)
 		if bridgeErr != nil {
 			startErr := fmt.Errorf("实例启动失败：代理桥接启动失败（xray）。原因：%v。请检查代理节点配置、xray 可执行文件是否存在，以及本地端口是否被占用。", bridgeErr)
 			log.Error("代理桥接失败(xray)", logger.F("error", bridgeErr.Error()), logger.F("reason", startErr.Error()))
@@ -245,6 +246,7 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		stableDebugPort, readyErr := waitBrowserDebugPortStable(assignedDebugPort, userDataDir, startReadyTimeout, startStableWindow, monitor)
 		if readyErr == nil {
 			a.markProfileRunningLocked(profileId, profile, cmd, cmd.Process.Pid, stableDebugPort, true, "")
+			a.markProfileInitialVerificationDoneLocked(profile, completeInitialVerification)
 			if acquiredXrayBridgeKey != "" {
 				a.bindProfileXrayBridge(profileId, acquiredXrayBridgeKey)
 				releaseXrayBridge = false
@@ -297,6 +299,7 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 		runtimeWarning := browserDebugPendingWarning(totalReadyTimeout)
 		pendingStartNotice = browserDebugPendingStartNotice(totalReadyTimeout)
 		a.markProfileRunningLocked(profileId, profile, cmd, cmd.Process.Pid, assignedDebugPort, false, runtimeWarning)
+		a.markProfileInitialVerificationDoneLocked(profile, completeInitialVerification)
 		if acquiredXrayBridgeKey != "" {
 			a.bindProfileXrayBridge(profileId, acquiredXrayBridgeKey)
 			releaseXrayBridge = false

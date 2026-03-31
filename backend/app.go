@@ -652,7 +652,7 @@ func (a *App) BrowserProxyListByGroup(groupName string) []BrowserProxy {
 // ValidateProxyConfig 验证代理配置是否支持
 func (a *App) ValidateProxyConfig(proxyConfig string, proxyId string) ProxyValidationResult {
 	proxies := a.getLatestProxies()
-	supported, errorMsg := proxy.ValidateProxyConfig(proxyConfig, proxies, proxyId)
+	supported, errorMsg := proxy.ValidateProxyChainConfig(proxyConfig, proxies, proxyId)
 	return ProxyValidationResult{
 		Supported: supported,
 		ErrorMsg:  errorMsg,
@@ -998,6 +998,7 @@ func (a *App) SaveBrowserProxies(proxies []BrowserProxy) error {
 			ProxyId:                proxyId,
 			ProxyName:              proxyName,
 			ProxyConfig:            proxyConfig,
+			PreProxyId:             strings.TrimSpace(item.PreProxyId),
 			DnsServers:             strings.TrimSpace(item.DnsServers),
 			GroupName:              strings.TrimSpace(item.GroupName),
 			SourceID:               sourceID,
@@ -1025,6 +1026,34 @@ func (a *App) SaveBrowserProxies(proxies []BrowserProxy) error {
 		}
 		if !found {
 			normalized = append([]BrowserProxy{b}, normalized...)
+		}
+	}
+
+	validIDs := make(map[string]struct{}, len(normalized))
+	preProxyMap := make(map[string]string, len(normalized))
+	for _, item := range normalized {
+		validIDs[item.ProxyId] = struct{}{}
+		preProxyMap[item.ProxyId] = strings.TrimSpace(item.PreProxyId)
+	}
+	for i := range normalized {
+		preProxyId := strings.TrimSpace(normalized[i].PreProxyId)
+		if preProxyId == "" {
+			continue
+		}
+		if preProxyId == normalized[i].ProxyId {
+			normalized[i].PreProxyId = ""
+			continue
+		}
+		if _, ok := validIDs[preProxyId]; !ok {
+			normalized[i].PreProxyId = ""
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(normalized[i].ProxyConfig), "direct://") {
+			normalized[i].PreProxyId = ""
+			continue
+		}
+		if strings.TrimSpace(preProxyMap[preProxyId]) != "" {
+			normalized[i].PreProxyId = ""
 		}
 	}
 

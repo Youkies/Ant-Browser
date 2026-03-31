@@ -30,18 +30,18 @@ func buildProxyHTTPClient(
 		if singboxMgr == nil {
 			return nil, fmt.Errorf("sing-box 管理器未初始化")
 		}
-		socks5Addr, err := singboxMgr.EnsureBridge(src, proxies, proxyId)
+		socks5Addr, err := EnsureSingBoxBridgeChain(singboxMgr, xrayMgr, src, proxies, proxyId)
 		if err != nil {
 			return nil, fmt.Errorf("sing-box 桥接启动失败: %w", err)
 		}
 		return buildSocks5HTTPClient(strings.TrimPrefix(socks5Addr, "socks5://"), timeout)
 	}
 
-	if RequiresBridge(src, proxies, proxyId) {
+	if RequiresXrayBridgeForChain(src, proxies, proxyId) {
 		if xrayMgr == nil {
 			return nil, fmt.Errorf("xray 管理器未初始化")
 		}
-		socks5Addr, err := xrayMgr.EnsureBridge(src, proxies, proxyId)
+		socks5Addr, err := EnsureXrayBridgeChain(xrayMgr, singboxMgr, src, proxies, proxyId)
 		if err != nil {
 			return nil, fmt.Errorf("xray 桥接启动失败: %w", err)
 		}

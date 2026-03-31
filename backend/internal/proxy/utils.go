@@ -248,7 +248,7 @@ func TestRealConnectivityWithSingBox(
 		if singboxMgr == nil {
 			return TestResult{ProxyId: proxyId, Ok: false, Error: "sing-box 管理器未初始化，无法测试 hysteria2"}
 		}
-		socks5Addr, err := singboxMgr.EnsureBridge(src, proxies, proxyId)
+		socks5Addr, err := EnsureSingBoxBridgeChain(singboxMgr, xrayMgr, src, proxies, proxyId)
 		if err != nil {
 			return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("sing-box 桥接启动失败: %v", err)}
 		}
@@ -263,12 +263,12 @@ func TestRealConnectivityWithSingBox(
 		}
 		transport := &http.Transport{DialContext: contextDialer.DialContext}
 		client = &http.Client{Transport: transport, Timeout: timeout}
-	} else if RequiresBridge(src, proxies, proxyId) {
+	} else if RequiresXrayBridgeForChain(src, proxies, proxyId) {
 		// BridgeProxy：通过 xray socks5 桥接
 		if xrayMgr == nil {
 			return TestResult{ProxyId: proxyId, Ok: false, Error: "xray 管理器未初始化"}
 		}
-		socks5Addr, err := xrayMgr.EnsureBridge(src, proxies, proxyId)
+		socks5Addr, err := EnsureXrayBridgeChain(xrayMgr, singboxMgr, src, proxies, proxyId)
 		if err != nil {
 			return TestResult{ProxyId: proxyId, Ok: false, Error: fmt.Sprintf("桥接启动失败: %v", err)}
 		}

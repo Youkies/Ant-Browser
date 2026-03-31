@@ -26,22 +26,6 @@ export namespace backend {
 	        this.sameSite = source["sameSite"];
 	    }
 	}
-	export class LicenseStatus {
-	    maxLimit: number;
-	    usedCount: number;
-	    usedKeys: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new LicenseStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.maxLimit = source["maxLimit"];
-	        this.usedCount = source["usedCount"];
-	        this.usedKeys = source["usedKeys"];
-	    }
-	}
 	export class ProxyIPHealthResult {
 	    proxyId: string;
 	    ok: boolean;
@@ -409,6 +393,7 @@ export namespace browser {
 	    keywords: string[];
 	    groupId: string;
 	    launchCode: string;
+	    initialVerificationDone: boolean;
 	    running: boolean;
 	    debugPort: number;
 	    debugReady: boolean;
@@ -442,6 +427,7 @@ export namespace browser {
 	        this.keywords = source["keywords"];
 	        this.groupId = source["groupId"];
 	        this.launchCode = source["launchCode"];
+	        this.initialVerificationDone = source["initialVerificationDone"];
 	        this.running = source["running"];
 	        this.debugPort = source["debugPort"];
 	        this.debugReady = source["debugReady"];
@@ -565,6 +551,7 @@ export namespace config {
 	    proxyId: string;
 	    proxyName: string;
 	    proxyConfig: string;
+	    preProxyId?: string;
 	    dnsServers?: string;
 	    groupName?: string;
 	    sortOrder?: number;
@@ -588,6 +575,7 @@ export namespace config {
 	        this.proxyId = source["proxyId"];
 	        this.proxyName = source["proxyName"];
 	        this.proxyConfig = source["proxyConfig"];
+	        this.preProxyId = source["preProxyId"];
 	        this.dnsServers = source["dnsServers"];
 	        this.groupName = source["groupName"];
 	        this.sortOrder = source["sortOrder"];

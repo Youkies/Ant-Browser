@@ -1,8 +1,42 @@
-﻿import { useState, useRef, useEffect } from 'react'
-import { Bell, Search, User, Settings, Check, Trash2, Info, AlertCircle, CheckCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import type { CSSProperties } from 'react'
+import { Bell, Search, User, Settings, Check, Trash2, Info, AlertCircle, CheckCircle, Minus, Square, Copy, X } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { useNotificationStore, type Notification } from '../../store/notificationStore'
+import { EventsEmit, WindowIsMaximised, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime'
+import { navigationConfig } from '../../config'
+
+const dragRegionStyle = {
+  ['--wails-draggable' as string]: 'drag',
+} as CSSProperties
+
+const noDragRegionStyle = {
+  ['--wails-draggable' as string]: 'no-drag',
+} as CSSProperties
+
+const dynamicPageTitles: Array<{ match: (pathname: string) => boolean; title: string }> = [
+  { match: (pathname) => pathname.startsWith('/browser/detail/'), title: '实例详情' },
+  { match: (pathname) => pathname.startsWith('/browser/edit/'), title: '编辑实例' },
+  { match: (pathname) => pathname.startsWith('/browser/copy/'), title: '复制实例' },
+]
+
+const pageTitleMap = new Map(
+  navigationConfig.flatMap((section) => section.items.map((item) => [item.path, item.name] as const))
+)
+
+function resolvePageTitle(pathname: string): string {
+  if (pageTitleMap.has(pathname)) {
+    return pageTitleMap.get(pathname) || 'Ant Browser'
+  }
+
+  const matchedDynamicTitle = dynamicPageTitles.find((item) => item.match(pathname))
+  if (matchedDynamicTitle) {
+    return matchedDynamicTitle.title
+  }
+
+  return 'Ant Browser'
+}
 
 function NotificationDropdown({
   notifications,
@@ -28,7 +62,6 @@ function NotificationDropdown({
 
   return (
     <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
-      {/* Header */}
       <div className="px-4 py-3 border-b border-[var(--color-border-muted)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-[var(--color-text-primary)]">通知</span>
@@ -58,7 +91,6 @@ function NotificationDropdown({
         </div>
       </div>
 
-      {/* Notification List */}
       <div className="max-h-80 overflow-y-auto">
         {notifications.length === 0 ? (
           <div className="py-8 text-center text-[var(--color-text-muted)]">
@@ -104,7 +136,6 @@ function NotificationDropdown({
         )}
       </div>
 
-      {/* Footer */}
       {notifications.length > 0 && (
         <div className="px-4 py-2 border-t border-[var(--color-border-muted)] bg-[var(--color-bg-muted)]/50">
           <button className="w-full text-xs text-center text-[var(--color-accent)] hover:underline">
@@ -118,12 +149,22 @@ function NotificationDropdown({
 
 export function Topbar() {
   const [showNotifications, setShowNotifications] = useState(false)
+  const [isMaximised, setIsMaximised] = useState(false)
   const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotificationStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
 
   const unreadCount = notifications.filter(n => !n.read).length
+  const pageTitle = resolvePageTitle(location.pathname)
 
-  // 点击外部关闭
+  const syncWindowState = async () => {
+    try {
+      setIsMaximised(await WindowIsMaximised())
+    } catch {
+      setIsMaximised(false)
+    }
+  }
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -134,26 +175,72 @@ export function Topbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    void syncWindowState()
+
+    const handleResize = () => {
+      void syncWindowState()
+    }
+
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('focus', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('focus', handleResize)
+    }
+  }, [])
+
+  const handleToggleMaximise = () => {
+    WindowToggleMaximise()
+    window.setTimeout(() => {
+      void syncWindowState()
+    }, 120)
+  }
+
+  const handleRequestClose = () => {
+    EventsEmit('app:request-close')
+  }
+
+  const handleOpenQuickLaunch = () => {
+    window.dispatchEvent(new CustomEvent('ant:quick-launch:open'))
+  }
+
   return (
-    <header className="h-14 bg-[var(--color-bg-surface)] border-b border-[var(--color-border-default)] px-4 flex items-center justify-between gap-4">
-      {/* 搜索框 - 固定宽度，不随容器拉伸 */}
-      <div className="w-64">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
-          <input
-            type="text"
-            placeholder="搜索..."
-            className="w-full h-8 pl-9 pr-3 bg-[var(--color-bg-muted)] border border-transparent rounded-md text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:bg-[var(--color-bg-surface)] focus:border-[var(--color-border-strong)] transition-all duration-150"
-          />
+    <header
+      className="h-14 bg-[var(--color-bg-surface)] border-b border-[var(--color-border-default)] pl-4 pr-2 flex items-center justify-between gap-3 select-none"
+      style={dragRegionStyle}
+      onDoubleClick={handleToggleMaximise}
+    >
+      <div className="flex items-center gap-4 min-w-0 flex-1">
+        <div
+          className="hidden md:flex items-center min-w-[96px] h-full"
+        >
+          <span className="text-sm font-semibold text-[var(--color-text-secondary)]">
+            {pageTitle}
+          </span>
         </div>
+
+        <div className="w-56 lg:w-72" style={noDragRegionStyle}>
+          <button
+            type="button"
+            onClick={handleOpenQuickLaunch}
+            className="relative w-full h-9 pl-9 pr-14 overflow-hidden bg-[var(--color-bg-muted)] border border-transparent rounded-xl text-sm text-left text-[var(--color-text-primary)] hover:bg-[var(--color-bg-subtle)] hover:border-[var(--color-border-default)] focus:outline-none focus:bg-[var(--color-bg-surface)] focus:border-[var(--color-border-strong)] transition-all duration-150"
+            title="打开全局快速启动"
+          >
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+            <span className="block truncate whitespace-nowrap text-[13px] text-[var(--color-text-muted)]">快速启动 / 搜索实例、Code、标签</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
+              Ctrl K
+            </span>
+          </button>
+        </div>
+
+        <div
+          className="flex-1 min-w-[48px] h-full"
+        />
       </div>
 
-      {/* 中间留白 */}
-      <div className="flex-1" />
-
-      {/* 右侧操作 */}
-      <div className="flex items-center gap-1">
-        {/* 通知按钮 */}
+      <div className="flex items-center gap-1" style={noDragRegionStyle}>
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
@@ -205,6 +292,35 @@ export function Topbar() {
           </div>
           <span className="text-sm font-medium text-[var(--color-text-secondary)]">Admin</span>
         </Link>
+
+        <div className="w-px h-5 bg-[var(--color-border-default)] mx-1.5" />
+
+        <div className="flex items-center rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-base)]/55 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => WindowMinimise()}
+            className="w-10 h-9 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-accent-muted)] transition-colors"
+            title="最小化"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleMaximise}
+            className="w-10 h-9 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-accent-muted)] transition-colors border-l border-[var(--color-border-default)]"
+            title={isMaximised ? '还原' : '最大化'}
+          >
+            {isMaximised ? <Copy className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={handleRequestClose}
+            className="w-10 h-9 flex items-center justify-center text-[var(--color-text-muted)] hover:text-white hover:bg-[#ef4444] transition-colors border-l border-[var(--color-border-default)]"
+            title="关闭"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </header>
   )

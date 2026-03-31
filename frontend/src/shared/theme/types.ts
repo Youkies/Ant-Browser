@@ -1,5 +1,4 @@
-// 主题类型定义
-export type ThemeType = 'dark' | 'light' | 'cream' | 'mint' | 'ocean'
+export type ThemeType = 'light' | 'dark' | 'system'
 
 export interface ThemeConfig {
   id: ThemeType
@@ -8,11 +7,9 @@ export interface ThemeConfig {
 }
 
 export const themeConfigs: ThemeConfig[] = [
-  { id: 'dark', name: '深色主题', description: '沉稳专业的深色风格' },
-  { id: 'light', name: '浅色主题', description: '简洁明亮的浅色风格' },
-  { id: 'cream', name: '奶油主题', description: '温暖柔和的奶油色调' },
-  { id: 'mint', name: '薄荷主题', description: '清新自然的浅绿风格' },
-  { id: 'ocean', name: '海洋主题', description: '深邃宁静的蓝色风格' },
+  { id: 'system', name: '跟随设备', description: '自动跟随系统的浅色或深色外观' },
+  { id: 'light', name: '浅色模式', description: '适合白天和明亮环境的清爽界面' },
+  { id: 'dark', name: '深色模式', description: '适合夜间和低亮度环境的沉浸界面' },
 ]
 
-export const DEFAULT_THEME: ThemeType = 'light'
+export const DEFAULT_THEME: ThemeType = 'system'

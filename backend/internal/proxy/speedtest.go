@@ -65,6 +65,9 @@ func SpeedTest(
 		return TestResult{ProxyId: proxyId, Ok: false, Error: "代理配置为空"}
 	}
 
+	if chain, err := ResolveProxyChain(src, proxies, proxyId); err == nil && chain != nil && chain.HasPreProxy() {
+		return TestRealConnectivityWithSingBox(proxyId, proxies, xrayMgr, singboxMgr)
+	}
 	if strings.ToLower(src) == "direct://" {
 		return TestResult{ProxyId: proxyId, Ok: true, LatencyMs: 0}
 	}

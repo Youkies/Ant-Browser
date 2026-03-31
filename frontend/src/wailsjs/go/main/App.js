@@ -234,10 +234,6 @@ export function ForceQuit() {
   return window['go']['main']['App']['ForceQuit']();
 }
 
-export function GenerateCDKeys(arg1) {
-  return window['go']['main']['App']['GenerateCDKeys'](arg1);
-}
-
 export function GetAppConfig() {
   return window['go']['main']['App']['GetAppConfig']();
 }
@@ -260,10 +256,6 @@ export function GetInterceptor() {
 
 export function GetLaunchServerInfo() {
   return window['go']['main']['App']['GetLaunchServerInfo']();
-}
-
-export function GetLicenseStatus() {
-  return window['go']['main']['App']['GetLicenseStatus']();
 }
 
 export function GetLogLevel() {
@@ -296,14 +288,6 @@ export function OpenUserDataDir(arg1) {
 
 export function QuitAppOnly() {
   return window['go']['main']['App']['QuitAppOnly']();
-}
-
-export function RedeemCDKey(arg1) {
-  return window['go']['main']['App']['RedeemCDKey'](arg1);
-}
-
-export function RedeemGithubStar() {
-  return window['go']['main']['App']['RedeemGithubStar']();
 }
 
 export function ReloadConfig() {

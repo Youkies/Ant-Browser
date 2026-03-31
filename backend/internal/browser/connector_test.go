@@ -18,6 +18,17 @@ func TestBuildLaunchArgsAppendsDefaultVerificationURLs(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("BuildLaunchArgs 结果错误:\n got=%v\nwant=%v", got, want)
+		t.Fatalf("BuildLaunchArgs result mismatch:\n got=%v\nwant=%v", got, want)
+	}
+}
+
+func TestBuildLaunchArgsSkipsDefaultVerificationURLsAfterInitialLaunch(t *testing.T) {
+	t.Parallel()
+
+	baseArgs := []string{"--disable-sync"}
+	got := BuildLaunchArgs(append([]string{}, baseArgs...), &Profile{InitialVerificationDone: true})
+
+	if !reflect.DeepEqual(got, baseArgs) {
+		t.Fatalf("BuildLaunchArgs should not append verification URLs after initial launch: got=%v want=%v", got, baseArgs)
 	}
 }

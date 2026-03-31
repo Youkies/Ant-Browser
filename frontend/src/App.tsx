@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './shared/theme'
 import { Layout } from './shared/layout'
 import { ToastContainer, Modal, Button, Loading } from './shared/components'
@@ -25,7 +25,6 @@ function lazyNamed<TModule extends Record<string, ComponentType<any>>>(
 const DashboardPage = lazyNamed(() => import('./modules/dashboard/DashboardPage'), 'DashboardPage')
 const SettingsPage = lazyNamed(() => import('./modules/settings/SettingsPage'), 'SettingsPage')
 const ProfilePage = lazyNamed(() => import('./modules/profile/ProfilePage'), 'ProfilePage')
-const AdminKeygenPage = lazyNamed(() => import('./modules/profile/AdminKeygenPage'), 'AdminKeygenPage')
 const ChartsPage = lazyNamed(() => import('./modules/charts/ChartsPage'), 'ChartsPage')
 const BrowserListPage = lazyNamed(() => import('./modules/browser/pages/BrowserListPage'), 'BrowserListPage')
 const BrowserDetailPage = lazyNamed(() => import('./modules/browser/pages/BrowserDetailPage'), 'BrowserDetailPage')
@@ -266,9 +265,15 @@ function App() {
       setQuickLaunchOpen((prev) => !prev)
     }
 
+    const onQuickLaunchOpen = () => {
+      setQuickLaunchOpen(true)
+    }
+
     window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('ant:quick-launch:open', onQuickLaunchOpen as EventListener)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('ant:quick-launch:open', onQuickLaunchOpen as EventListener)
     }
   }, [])
 
@@ -282,7 +287,6 @@ function App() {
               <Route path="/charts" element={<ChartsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/admin/keygen" element={<AdminKeygenPage />} />
               <Route path="/browser/list" element={<BrowserListPage />} />
               <Route path="/browser/detail/:id" element={<BrowserDetailPage />} />
               <Route path="/browser/edit/:id" element={<BrowserEditPage />} />

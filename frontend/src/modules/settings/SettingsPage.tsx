@@ -6,6 +6,7 @@ import type { AppSettings } from './types'
 import { defaultSettings } from './types'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { useBackupStore } from '../../store/backupStore'
+import { useTheme } from '../../shared/theme'
 
 interface BackupExportProgress {
   phase: string
@@ -26,6 +27,7 @@ interface BackupExportLogItem {
 }
 
 export function SettingsPage() {
+  const { setTheme } = useTheme()
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -162,6 +164,7 @@ export function SettingsPage() {
     try {
       const data = await fetchSettings()
       setSettings(data)
+      setTheme(data.theme)
     } finally {
       setLoading(false)
     }
@@ -170,6 +173,11 @@ export function SettingsPage() {
   const handleChange = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }))
     setHasChanges(true)
+  }
+
+  const handleThemeChange = (theme: AppSettings['theme']) => {
+    handleChange('theme', theme)
+    setTheme(theme)
   }
 
   const handleSave = async () => {
@@ -192,6 +200,7 @@ export function SettingsPage() {
       const data = await resetSettings()
       setSettings(data)
       setHasChanges(false)
+      setTheme(data.theme)
     }
   }
 
@@ -331,7 +340,7 @@ export function SettingsPage() {
 
       {/* 主题设置 */}
       <Card title="主题设置" subtitle="选择您喜欢的界面主题">
-        <ThemeSwitcher />
+        <ThemeSwitcher value={settings.theme} onChange={handleThemeChange} />
       </Card>
 
       {/* 基础设置 */}

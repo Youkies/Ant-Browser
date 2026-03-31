@@ -98,6 +98,22 @@ func (a *App) markProfileRunningLocked(profileId string, profile *BrowserProfile
 	}
 }
 
+func (a *App) markProfileInitialVerificationDoneLocked(profile *BrowserProfile, seeded bool) {
+	if !seeded || profile == nil || profile.InitialVerificationDone {
+		return
+	}
+	profile.InitialVerificationDone = true
+	profile.UpdatedAt = time.Now().Format(time.RFC3339)
+	if a.browserMgr == nil {
+		return
+	}
+	if a.browserMgr.ProfileDAO != nil {
+		_ = a.browserMgr.ProfileDAO.Upsert(profile)
+		return
+	}
+	_ = a.browserMgr.SaveProfiles()
+}
+
 func (a *App) markProfileDebugReadyLocked(profile *BrowserProfile, debugPort int) {
 	if profile == nil {
 		return

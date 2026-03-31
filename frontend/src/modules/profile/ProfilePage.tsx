@@ -11,7 +11,6 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Card } from '../../shared/components'
 import { createDefaultProfilePageData, loadProfilePageData } from './api'
 import type { IconKey, ProfilePageData } from './types'
@@ -34,7 +33,6 @@ const CHANNEL_ICON_CLASS: Partial<Record<IconKey, string>> = {
 }
 
 export function ProfilePage() {
-  const navigate = useNavigate()
   const [clickCount, setClickCount] = useState(0)
   const [pageData, setPageData] = useState<ProfilePageData>(() => createDefaultProfilePageData())
 
@@ -58,7 +56,6 @@ export function ProfilePage() {
     const newCount = clickCount + 1
     setClickCount(newCount)
     if (newCount >= 5) {
-      navigate('/admin/keygen')
       setClickCount(0)
     }
   }

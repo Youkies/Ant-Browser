@@ -12,65 +12,59 @@ func TestLoadBackfillsLegacyConfig(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.yaml")
 	legacyConfig := `
-app:
-  used_cd_keys:
-    - GITHUB_STAR_REWARD
 logging: {}
 browser: {}
 `
 	if err := os.WriteFile(configPath, []byte(legacyConfig), 0o644); err != nil {
-		t.Fatalf("写入测试配置失败: %v", err)
+		t.Fatalf("鍐欏叆娴嬭瘯閰嶇疆澶辫触: %v", err)
 	}
 
 	cfg, err := Load(configPath)
 	if err != nil {
-		t.Fatalf("加载配置失败: %v", err)
+		t.Fatalf("鍔犺浇閰嶇疆澶辫触: %v", err)
 	}
 
 	if cfg.Database.Type != "sqlite" {
-		t.Fatalf("Database.Type 未补齐: got=%q", cfg.Database.Type)
+		t.Fatalf("Database.Type 鏈ˉ榻? got=%q", cfg.Database.Type)
 	}
 	if cfg.Database.SQLite.Path != "data/app.db" {
-		t.Fatalf("Database.SQLite.Path 未补齐: got=%q", cfg.Database.SQLite.Path)
+		t.Fatalf("Database.SQLite.Path 鏈ˉ榻? got=%q", cfg.Database.SQLite.Path)
 	}
 	if cfg.App.Name != "Ant Browser" {
-		t.Fatalf("App.Name 未补齐: got=%q", cfg.App.Name)
-	}
-	if cfg.App.MaxProfileLimit != GithubStarProfileTotal {
-		t.Fatalf("MaxProfileLimit 计算错误: got=%d want=%d", cfg.App.MaxProfileLimit, GithubStarProfileTotal)
+		t.Fatalf("App.Name 鏈ˉ榻? got=%q", cfg.App.Name)
 	}
 	if cfg.Runtime.MaxMemoryMB != 0 || cfg.Runtime.GCPercent != 100 {
-		t.Fatalf("Runtime 未补齐: got=%+v", cfg.Runtime)
+		t.Fatalf("Runtime 鏈ˉ榻? got=%+v", cfg.Runtime)
 	}
 	if cfg.Logging.Level != "info" || cfg.Logging.FilePath != "data/logs/app.log" {
-		t.Fatalf("Logging 基础字段未补齐: got=%+v", cfg.Logging)
+		t.Fatalf("Logging 鍩虹瀛楁鏈ˉ榻? got=%+v", cfg.Logging)
 	}
 	if !cfg.Logging.Interceptor.Enabled || !cfg.Logging.Interceptor.LogParameters || !cfg.Logging.Interceptor.LogResults {
-		t.Fatalf("Interceptor 默认值未补齐: got=%+v", cfg.Logging.Interceptor)
+		t.Fatalf("Interceptor 榛樿鍊兼湭琛ラ綈: got=%+v", cfg.Logging.Interceptor)
 	}
 	if len(cfg.Logging.Interceptor.SensitiveFields) == 0 {
 		t.Fatalf("Interceptor.SensitiveFields 未补齐")
 	}
 	if cfg.Browser.UserDataRoot != "data" {
-		t.Fatalf("Browser.UserDataRoot 未补齐: got=%q", cfg.Browser.UserDataRoot)
+		t.Fatalf("Browser.UserDataRoot 鏈ˉ榻? got=%q", cfg.Browser.UserDataRoot)
 	}
 	if len(cfg.Browser.DefaultFingerprintArgs) == 0 || len(cfg.Browser.DefaultLaunchArgs) == 0 {
 		t.Fatalf("Browser 默认启动参数未补齐")
 	}
 	if cfg.Browser.Cores == nil || cfg.Browser.Proxies == nil || cfg.Browser.Profiles == nil {
-		t.Fatalf("Browser 列表字段应初始化为空切片")
+		t.Fatalf("Browser 鍒楄〃瀛楁搴斿垵濮嬪寲涓虹┖鍒囩墖")
 	}
 	if cfg.LaunchServer.Port != DefaultLaunchServerPort {
-		t.Fatalf("LaunchServer.Port 未补齐: got=%d", cfg.LaunchServer.Port)
+		t.Fatalf("LaunchServer.Port 鏈ˉ榻? got=%d", cfg.LaunchServer.Port)
 	}
 	if cfg.LaunchServer.Auth.Enabled {
-		t.Fatalf("LaunchServer.Auth.Enabled 默认应为 false: got=%v", cfg.LaunchServer.Auth.Enabled)
+		t.Fatalf("LaunchServer.Auth.Enabled 榛樿搴斾负 false: got=%v", cfg.LaunchServer.Auth.Enabled)
 	}
 	if cfg.LaunchServer.Auth.APIKey != "" {
-		t.Fatalf("LaunchServer.Auth.APIKey 默认应为空: got=%q", cfg.LaunchServer.Auth.APIKey)
+		t.Fatalf("LaunchServer.Auth.APIKey 榛樿搴斾负绌? got=%q", cfg.LaunchServer.Auth.APIKey)
 	}
 	if cfg.LaunchServer.Auth.Header != DefaultLaunchServerAPIKeyHeader {
-		t.Fatalf("LaunchServer.Auth.Header 未补齐: got=%q", cfg.LaunchServer.Auth.Header)
+		t.Fatalf("LaunchServer.Auth.Header 鏈ˉ榻? got=%q", cfg.LaunchServer.Auth.Header)
 	}
 }
 
@@ -91,8 +85,6 @@ app:
     height: 800
     min_width: 900
     min_height: 600
-  max_profile_limit: 20
-  used_cd_keys: []
 runtime:
   max_memory_mb: 2048
   gc_percent: 80
@@ -134,46 +126,46 @@ launch_server:
     header: X-Custom-Ant-Key
 `
 	if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
-		t.Fatalf("写入测试配置失败: %v", err)
+		t.Fatalf("鍐欏叆娴嬭瘯閰嶇疆澶辫触: %v", err)
 	}
 
 	cfg, err := Load(configPath)
 	if err != nil {
-		t.Fatalf("加载配置失败: %v", err)
+		t.Fatalf("鍔犺浇閰嶇疆澶辫触: %v", err)
 	}
 
-	if cfg.App.Name != "Custom App" || cfg.App.MaxProfileLimit != 20 {
-		t.Fatalf("App 显式配置被覆盖: got=%+v", cfg.App)
+	if cfg.App.Name != "Custom App" {
+		t.Fatalf("App 鏄惧紡閰嶇疆琚鐩? got=%+v", cfg.App)
 	}
 	if cfg.Database.SQLite.Path != "custom/app.db" {
-		t.Fatalf("Database.SQLite.Path 显式配置被覆盖: got=%q", cfg.Database.SQLite.Path)
+		t.Fatalf("Database.SQLite.Path 鏄惧紡閰嶇疆琚鐩? got=%q", cfg.Database.SQLite.Path)
 	}
 	if cfg.Runtime.MaxMemoryMB != 2048 || cfg.Runtime.GCPercent != 80 {
-		t.Fatalf("Runtime 显式配置被覆盖: got=%+v", cfg.Runtime)
+		t.Fatalf("Runtime 鏄惧紡閰嶇疆琚鐩? got=%+v", cfg.Runtime)
 	}
 	if cfg.Logging.Level != "debug" || cfg.Logging.Format != "json" || !cfg.Logging.FileEnabled {
-		t.Fatalf("Logging 显式配置被覆盖: got=%+v", cfg.Logging)
+		t.Fatalf("Logging 鏄惧紡閰嶇疆琚鐩? got=%+v", cfg.Logging)
 	}
 	if cfg.Logging.Interceptor.Enabled {
 		t.Fatalf("Interceptor.Enabled 显式 false 被覆盖")
 	}
 	if len(cfg.Browser.DefaultFingerprintArgs) != 1 || cfg.Browser.DefaultFingerprintArgs[0] != "--fingerprint-brand=Edge" {
-		t.Fatalf("Browser.DefaultFingerprintArgs 显式配置被覆盖: got=%v", cfg.Browser.DefaultFingerprintArgs)
+		t.Fatalf("Browser.DefaultFingerprintArgs 鏄惧紡閰嶇疆琚鐩? got=%v", cfg.Browser.DefaultFingerprintArgs)
 	}
 	if cfg.Browser.UserDataRoot != "custom_data" || cfg.Browser.DefaultProxy != "direct://" {
-		t.Fatalf("Browser 显式配置被覆盖: got=%+v", cfg.Browser)
+		t.Fatalf("Browser 鏄惧紡閰嶇疆琚鐩? got=%+v", cfg.Browser)
 	}
 	if cfg.LaunchServer.Port != 30000 {
-		t.Fatalf("LaunchServer.Port 显式配置被覆盖: got=%d", cfg.LaunchServer.Port)
+		t.Fatalf("LaunchServer.Port 鏄惧紡閰嶇疆琚鐩? got=%d", cfg.LaunchServer.Port)
 	}
 	if !cfg.LaunchServer.Auth.Enabled {
 		t.Fatalf("LaunchServer.Auth.Enabled 显式配置被覆盖")
 	}
 	if cfg.LaunchServer.Auth.APIKey != "secret-key" {
-		t.Fatalf("LaunchServer.Auth.APIKey 显式配置被覆盖: got=%q", cfg.LaunchServer.Auth.APIKey)
+		t.Fatalf("LaunchServer.Auth.APIKey 鏄惧紡閰嶇疆琚鐩? got=%q", cfg.LaunchServer.Auth.APIKey)
 	}
 	if cfg.LaunchServer.Auth.Header != "X-Custom-Ant-Key" {
-		t.Fatalf("LaunchServer.Auth.Header 显式配置被覆盖: got=%q", cfg.LaunchServer.Auth.Header)
+		t.Fatalf("LaunchServer.Auth.Header 鏄惧紡閰嶇疆琚鐩? got=%q", cfg.LaunchServer.Auth.Header)
 	}
 }
 
@@ -187,15 +179,15 @@ logging:
   file_path: logs/app.log
 `
 	if err := os.WriteFile(configPath, []byte(legacyConfig), 0o644); err != nil {
-		t.Fatalf("写入测试配置失败: %v", err)
+		t.Fatalf("鍐欏叆娴嬭瘯閰嶇疆澶辫触: %v", err)
 	}
 
 	cfg, err := Load(configPath)
 	if err != nil {
-		t.Fatalf("加载配置失败: %v", err)
+		t.Fatalf("鍔犺浇閰嶇疆澶辫触: %v", err)
 	}
 
 	if cfg.Logging.FilePath != "data/logs/app.log" {
-		t.Fatalf("legacy 根目录日志路径未迁移: got=%q", cfg.Logging.FilePath)
+		t.Fatalf("legacy 鏍圭洰褰曟棩蹇楄矾寰勬湭杩佺Щ: got=%q", cfg.Logging.FilePath)
 	}
 }

@@ -47,6 +47,7 @@ var migrations = []migration{
 				proxy_id         TEXT NOT NULL DEFAULT '',
 				proxy_config     TEXT NOT NULL DEFAULT '',
 				launch_args      TEXT NOT NULL DEFAULT '[]',
+				initial_verification_done INTEGER NOT NULL DEFAULT 0,
 				tags             TEXT NOT NULL DEFAULT '[]',
 				keywords         TEXT NOT NULL DEFAULT '[]',
 				created_at       DATETIME NOT NULL,
@@ -58,6 +59,7 @@ var migrations = []migration{
 				proxy_id     TEXT PRIMARY KEY,
 				proxy_name   TEXT NOT NULL,
 				proxy_config TEXT NOT NULL,
+				pre_proxy_id TEXT NOT NULL DEFAULT '',
 				dns_servers  TEXT NOT NULL DEFAULT '',
 				sort_order   INTEGER NOT NULL DEFAULT 0,
 				created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -136,6 +138,20 @@ var migrations = []migration{
 		},
 	},
 	// ── 新版本在此追加，格式：
+	{
+		version: 7,
+		desc:    "浠ｇ悊琛ㄦ坊鍔犲墠缃妭鐐瑰瓧娈?",
+		stmts: []string{
+			`ALTER TABLE browser_proxies ADD COLUMN pre_proxy_id TEXT NOT NULL DEFAULT ''`,
+		},
+	},
+	{
+		version: 8,
+		desc:    "实例表增加首启检测页完成标记",
+		stmts: []string{
+			`ALTER TABLE browser_profiles ADD COLUMN initial_verification_done INTEGER NOT NULL DEFAULT 0`,
+		},
+	},
 	// {
 	//     version: 4,
 	//     desc:    "描述本次变更",

@@ -18,8 +18,6 @@ func TestBackupEnsureZipSuffix(t *testing.T) {
 
 func TestBackupMergeConfigDedup(t *testing.T) {
 	current := config.DefaultConfig()
-	current.App.MaxProfileLimit = 12
-	current.App.UsedCDKeys = []string{"A1", "B2"}
 	current.Browser.DefaultBookmarks = []config.BrowserBookmark{
 		{Name: "Google", URL: "https://www.google.com/"},
 	}
@@ -34,7 +32,6 @@ func TestBackupMergeConfigDedup(t *testing.T) {
 	}
 
 	incoming := config.DefaultConfig()
-	incoming.App.UsedCDKeys = []string{"b2", "C3"}
 	incoming.Browser.DefaultBookmarks = []config.BrowserBookmark{
 		{Name: "Google Dup", URL: "https://www.google.com/"},
 		{Name: "ChatGPT", URL: "https://chatgpt.com/"},
@@ -56,43 +53,36 @@ func TestBackupMergeConfigDedup(t *testing.T) {
 	if merged == nil {
 		t.Fatalf("merged 为空")
 	}
-
-	if merged.App.MaxProfileLimit != 12 {
-		t.Fatalf("license limit 不应被导入配置改写: got=%d", merged.App.MaxProfileLimit)
-	}
-	if len(merged.App.UsedCDKeys) != 2 {
-		t.Fatalf("used cd keys 不应被导入配置改写: %+v", merged.App.UsedCDKeys)
-	}
 	if len(merged.Browser.DefaultBookmarks) != 2 {
-		t.Fatalf("bookmarks 判重失败: %+v", merged.Browser.DefaultBookmarks)
+		t.Fatalf("bookmarks 去重失败: %+v", merged.Browser.DefaultBookmarks)
 	}
 	if len(merged.Browser.Proxies) != 2 {
-		t.Fatalf("proxies 判重失败: %+v", merged.Browser.Proxies)
+		t.Fatalf("proxies 去重失败: %+v", merged.Browser.Proxies)
 	}
 	if len(merged.Browser.Cores) != 2 {
-		t.Fatalf("cores 判重失败: %+v", merged.Browser.Cores)
+		t.Fatalf("cores 去重失败: %+v", merged.Browser.Cores)
 	}
 	if len(merged.Browser.Profiles) != 2 {
-		t.Fatalf("profiles 判重失败: %+v", merged.Browser.Profiles)
+		t.Fatalf("profiles 去重失败: %+v", merged.Browser.Profiles)
 	}
 }
 
 func TestBackupSyncDirConflictAndOverwrite(t *testing.T) {
 	src := filepath.Join(t.TempDir(), "src")
 	dst := filepath.Join(t.TempDir(), "dst")
-	if err := os.MkdirAll(src, 0755); err != nil {
+	if err := os.MkdirAll(src, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(dst, 0755); err != nil {
+	if err := os.MkdirAll(dst, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	srcFile := filepath.Join(src, "a.txt")
 	dstFile := filepath.Join(dst, "a.txt")
-	if err := os.WriteFile(srcFile, []byte("new-content"), 0644); err != nil {
+	if err := os.WriteFile(srcFile, []byte("new-content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(dstFile, []byte("old-content"), 0644); err != nil {
+	if err := os.WriteFile(dstFile, []byte("old-content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -33,7 +33,7 @@ func (d *SQLiteProfileDAO) List() ([]*Profile, error) {
 		       fingerprint_args, proxy_id, proxy_config,
 		       COALESCE(proxy_bind_source_id, ''), COALESCE(proxy_bind_source_url, ''),
 		       COALESCE(proxy_bind_name, ''), COALESCE(proxy_bind_updated_at, ''),
-		       launch_args,
+		       launch_args, initial_verification_done,
 		       tags, keywords, group_id, created_at, updated_at
 		FROM browser_profiles ORDER BY created_at ASC`)
 	if err != nil {
@@ -59,7 +59,7 @@ func (d *SQLiteProfileDAO) GetById(profileId string) (*Profile, error) {
 		       fingerprint_args, proxy_id, proxy_config,
 		       COALESCE(proxy_bind_source_id, ''), COALESCE(proxy_bind_source_url, ''),
 		       COALESCE(proxy_bind_name, ''), COALESCE(proxy_bind_updated_at, ''),
-		       launch_args,
+		       launch_args, initial_verification_done,
 		       tags, keywords, group_id, created_at, updated_at
 		FROM browser_profiles WHERE profile_id = ?`, profileId)
 	p, err := scanProfile(row)
@@ -88,8 +88,8 @@ func (d *SQLiteProfileDAO) Upsert(profile *Profile) error {
 		INSERT INTO browser_profiles
 		  (profile_id, profile_name, user_data_dir, core_id, fingerprint_args,
 		   proxy_id, proxy_config, proxy_bind_source_id, proxy_bind_source_url, proxy_bind_name, proxy_bind_updated_at,
-		   launch_args, tags, keywords, group_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		   launch_args, initial_verification_done, tags, keywords, group_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(profile_id) DO UPDATE SET
 		  profile_name     = excluded.profile_name,
 		  user_data_dir    = excluded.user_data_dir,
@@ -102,6 +102,7 @@ func (d *SQLiteProfileDAO) Upsert(profile *Profile) error {
 		  proxy_bind_name = excluded.proxy_bind_name,
 		  proxy_bind_updated_at = excluded.proxy_bind_updated_at,
 		  launch_args      = excluded.launch_args,
+		  initial_verification_done = excluded.initial_verification_done,
 		  tags             = excluded.tags,
 		  keywords         = excluded.keywords,
 		  group_id         = excluded.group_id,
@@ -109,7 +110,7 @@ func (d *SQLiteProfileDAO) Upsert(profile *Profile) error {
 		profile.ProfileId, profile.ProfileName, profile.UserDataDir, profile.CoreId,
 		string(fingerprintArgs), profile.ProxyId, profile.ProxyConfig,
 		profile.ProxyBindSourceID, profile.ProxyBindSourceURL, profile.ProxyBindName, profile.ProxyBindUpdatedAt,
-		string(launchArgs), string(tags), string(keywords), profile.GroupId,
+		string(launchArgs), profile.InitialVerificationDone, string(tags), string(keywords), profile.GroupId,
 		profile.CreatedAt, profile.UpdatedAt,
 	)
 	if err != nil {
@@ -151,7 +152,7 @@ func (d *SQLiteProfileDAO) ListByGroup(groupId string, includeChildren bool, chi
 			       fingerprint_args, proxy_id, proxy_config,
 			       COALESCE(proxy_bind_source_id, ''), COALESCE(proxy_bind_source_url, ''),
 			       COALESCE(proxy_bind_name, ''), COALESCE(proxy_bind_updated_at, ''),
-			       launch_args,
+			       launch_args, initial_verification_done,
 			       tags, keywords, group_id, created_at, updated_at
 			FROM browser_profiles WHERE group_id IN (%s) ORDER BY created_at ASC`, inClause), args...)
 	} else {
@@ -161,7 +162,7 @@ func (d *SQLiteProfileDAO) ListByGroup(groupId string, includeChildren bool, chi
 			       fingerprint_args, proxy_id, proxy_config,
 			       COALESCE(proxy_bind_source_id, ''), COALESCE(proxy_bind_source_url, ''),
 			       COALESCE(proxy_bind_name, ''), COALESCE(proxy_bind_updated_at, ''),
-			       launch_args,
+			       launch_args, initial_verification_done,
 			       tags, keywords, group_id, created_at, updated_at
 			FROM browser_profiles WHERE group_id = ? ORDER BY created_at ASC`, groupId)
 	}
@@ -218,7 +219,7 @@ func scanProfile(s scanner) (*Profile, error) {
 		&p.ProfileId, &p.ProfileName, &p.UserDataDir, &p.CoreId,
 		&fingerprintArgsJSON, &p.ProxyId, &p.ProxyConfig,
 		&p.ProxyBindSourceID, &p.ProxyBindSourceURL, &p.ProxyBindName, &p.ProxyBindUpdatedAt,
-		&launchArgsJSON, &tagsJSON, &keywordsJSON, &p.GroupId,
+		&launchArgsJSON, &p.InitialVerificationDone, &tagsJSON, &keywordsJSON, &p.GroupId,
 		&p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {

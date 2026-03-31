@@ -189,6 +189,7 @@ func main() {
 		Title:     cfg.App.Name,
 		Width:     cfg.App.Window.Width,
 		Height:    cfg.App.Window.Height,
+		Frameless: true,
 		MinWidth:  cfg.App.Window.MinWidth,
 		MinHeight: cfg.App.Window.MinHeight,
 		AssetServer: &assetserver.Options{
@@ -241,6 +242,21 @@ func main() {
 		Windows: &windows.Options{
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
+			Theme:                windows.SystemDefault,
+			CustomTheme: &windows.ThemeSettings{
+				DarkModeTitleBar:           windows.RGB(12, 12, 14),
+				DarkModeTitleBarInactive:   windows.RGB(24, 24, 27),
+				DarkModeTitleText:          windows.RGB(250, 250, 250),
+				DarkModeTitleTextInactive:  windows.RGB(161, 161, 170),
+				DarkModeBorder:             windows.RGB(39, 39, 42),
+				DarkModeBorderInactive:     windows.RGB(39, 39, 42),
+				LightModeTitleBar:          windows.RGB(248, 250, 252),
+				LightModeTitleBarInactive:  windows.RGB(241, 245, 249),
+				LightModeTitleText:         windows.RGB(30, 41, 59),
+				LightModeTitleTextInactive: windows.RGB(100, 116, 139),
+				LightModeBorder:            windows.RGB(226, 232, 240),
+				LightModeBorderInactive:    windows.RGB(226, 232, 240),
+			},
 		},
 	})
 
