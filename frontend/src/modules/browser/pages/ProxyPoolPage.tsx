@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, ConfirmModal, FormItem, Input, Modal, Select, Switch, Table, Textarea, toast } from '../../../shared/components'
 import type { SortOrder, TableColumn } from '../../../shared/components/Table'
 import type { BrowserProxy, ProxyIPHealthResult } from '../types'
 import { fetchBrowserProxies, fetchBrowserProxyGroups, saveBrowserProxies, browserProxyTestSpeed, browserProxyBatchTestSpeed, browserProxyCheckIPHealth, browserProxyBatchCheckIPHealth, fetchClashImportFromURL } from '../api'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
+import * as FlagIcons from 'country-flag-icons/react/3x2'
 import yaml from 'js-yaml'
+import { Gauge, Pencil, RefreshCw, Shield, Trash2 } from 'lucide-react'
 
 // 内置代理 ID，不可删除、不可编辑
 const BUILTIN_PROXY_IDS = new Set(['__direct__', '__local__'])
@@ -95,6 +97,274 @@ interface URLImportSourceMeta {
   sourceAutoRefresh: boolean
   sourceRefreshIntervalM: number
   sourceLastRefreshAt: string
+}
+
+type ActionButtonVariant = 'ghost' | 'secondary' | 'danger'
+
+interface ActionIconButtonProps {
+  title: string
+  icon: ReactNode
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void
+  variant?: ActionButtonVariant
+  disabled?: boolean
+  loading?: boolean
+}
+
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  us: 'US',
+  usa: 'US',
+  'united states': 'US',
+  'united states of america': 'US',
+  '美国': 'US',
+  cn: 'CN',
+  china: 'CN',
+  '中国': 'CN',
+  hk: 'HK',
+  'hong kong': 'HK',
+  'hong kong sar': 'HK',
+  '中国香港': 'HK',
+  '香港': 'HK',
+  tw: 'TW',
+  taiwan: 'TW',
+  'taiwan, province of china': 'TW',
+  '中国台湾': 'TW',
+  '台湾': 'TW',
+  mo: 'MO',
+  macau: 'MO',
+  macao: 'MO',
+  '中国澳门': 'MO',
+  '澳门': 'MO',
+  jp: 'JP',
+  japan: 'JP',
+  '日本': 'JP',
+  kr: 'KR',
+  'south korea': 'KR',
+  korea: 'KR',
+  '韩国': 'KR',
+  sg: 'SG',
+  singapore: 'SG',
+  '新加坡': 'SG',
+  my: 'MY',
+  malaysia: 'MY',
+  '马来西亚': 'MY',
+  th: 'TH',
+  thailand: 'TH',
+  '泰国': 'TH',
+  vn: 'VN',
+  vietnam: 'VN',
+  '越南': 'VN',
+  ph: 'PH',
+  philippines: 'PH',
+  '菲律宾': 'PH',
+  id: 'ID',
+  indonesia: 'ID',
+  '印度尼西亚': 'ID',
+  '印尼': 'ID',
+  in: 'IN',
+  india: 'IN',
+  '印度': 'IN',
+  gb: 'GB',
+  uk: 'GB',
+  'united kingdom': 'GB',
+  britain: 'GB',
+  england: 'GB',
+  '英国': 'GB',
+  de: 'DE',
+  germany: 'DE',
+  '德国': 'DE',
+  fr: 'FR',
+  france: 'FR',
+  '法国': 'FR',
+  nl: 'NL',
+  netherlands: 'NL',
+  holland: 'NL',
+  '荷兰': 'NL',
+  ca: 'CA',
+  canada: 'CA',
+  '加拿大': 'CA',
+  au: 'AU',
+  australia: 'AU',
+  '澳大利亚': 'AU',
+  nz: 'NZ',
+  'new zealand': 'NZ',
+  '新西兰': 'NZ',
+  ru: 'RU',
+  russia: 'RU',
+  '俄罗斯': 'RU',
+  ua: 'UA',
+  ukraine: 'UA',
+  '乌克兰': 'UA',
+  pl: 'PL',
+  poland: 'PL',
+  '波兰': 'PL',
+  cz: 'CZ',
+  'czech republic': 'CZ',
+  czechia: 'CZ',
+  '捷克': 'CZ',
+  hu: 'HU',
+  hungary: 'HU',
+  '匈牙利': 'HU',
+  ro: 'RO',
+  romania: 'RO',
+  '罗马尼亚': 'RO',
+  pt: 'PT',
+  portugal: 'PT',
+  '葡萄牙': 'PT',
+  es: 'ES',
+  spain: 'ES',
+  '西班牙': 'ES',
+  it: 'IT',
+  italy: 'IT',
+  '意大利': 'IT',
+  ch: 'CH',
+  switzerland: 'CH',
+  '瑞士': 'CH',
+  se: 'SE',
+  sweden: 'SE',
+  '瑞典': 'SE',
+  no: 'NO',
+  norway: 'NO',
+  '挪威': 'NO',
+  fi: 'FI',
+  finland: 'FI',
+  '芬兰': 'FI',
+  dk: 'DK',
+  denmark: 'DK',
+  '丹麦': 'DK',
+  be: 'BE',
+  belgium: 'BE',
+  '比利时': 'BE',
+  at: 'AT',
+  austria: 'AT',
+  '奥地利': 'AT',
+  ie: 'IE',
+  ireland: 'IE',
+  '爱尔兰': 'IE',
+  br: 'BR',
+  brazil: 'BR',
+  '巴西': 'BR',
+  mx: 'MX',
+  mexico: 'MX',
+  '墨西哥': 'MX',
+  ar: 'AR',
+  argentina: 'AR',
+  '阿根廷': 'AR',
+  tr: 'TR',
+  turkey: 'TR',
+  '土耳其': 'TR',
+  ae: 'AE',
+  'united arab emirates': 'AE',
+  uae: 'AE',
+  '阿联酋': 'AE',
+  sa: 'SA',
+  'saudi arabia': 'SA',
+  '沙特阿拉伯': 'SA',
+  qa: 'QA',
+  qatar: 'QA',
+  '卡塔尔': 'QA',
+  il: 'IL',
+  israel: 'IL',
+  '以色列': 'IL',
+  eg: 'EG',
+  egypt: 'EG',
+  '埃及': 'EG',
+  za: 'ZA',
+  'south africa': 'ZA',
+  '南非': 'ZA',
+  cl: 'CL',
+  chile: 'CL',
+  '智利': 'CL',
+}
+
+function normalizeCountryLookupKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[().,_-]+/g, ' ').replace(/\s+/g, ' ')
+}
+
+function toCountryCodeCandidate(value: unknown): string {
+  const text = String(value || '').trim().toUpperCase()
+  if (/^[A-Z]{2}$/.test(text)) return text
+  return ''
+}
+
+function resolveCountryCode(result?: ProxyIPHealthResult): string {
+  if (!result?.ok) return ''
+
+  const rawData = result.rawData || {}
+  const directCandidates = [
+    rawData.countryCode,
+    rawData.country_code,
+    rawData.countryCode2,
+    rawData.country_code2,
+    rawData.country_iso,
+    rawData.iso2,
+    rawData.iso_2,
+    rawData.code,
+  ]
+  for (const candidate of directCandidates) {
+    const code = toCountryCodeCandidate(candidate)
+    if (code) return code
+  }
+
+  const lookupKeys = [
+    result.country,
+    rawData.countryName,
+    rawData.country_name,
+    rawData.country,
+  ]
+
+  for (const key of lookupKeys) {
+    const normalized = normalizeCountryLookupKey(String(key || ''))
+    if (!normalized) continue
+    const code = COUNTRY_NAME_TO_CODE[normalized]
+    if (code) return code
+  }
+
+  return ''
+}
+
+function formatIPLocation(result?: ProxyIPHealthResult): string {
+  if (!result?.ok) return ''
+  return [result.country, result.region, result.city].filter(Boolean).join(' / ')
+}
+
+function CountryFlag({ result, className = 'w-4 h-3 rounded-[3px] shadow-sm ring-1 ring-black/5' }: { result?: ProxyIPHealthResult; className?: string }) {
+  const countryCode = resolveCountryCode(result)
+  if (!countryCode) return null
+
+  const FlagComponent = FlagIcons[countryCode as keyof typeof FlagIcons] as ((props: { className?: string; title?: string }) => JSX.Element) | undefined
+  if (!FlagComponent) return null
+
+  return <FlagComponent className={className} title={result?.country || countryCode} />
+}
+
+function ActionIconButton({
+  title,
+  icon,
+  onClick,
+  variant = 'ghost',
+  disabled = false,
+  loading = false,
+}: ActionIconButtonProps) {
+  const variantClassName = variant === 'danger'
+    ? 'border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:border-red-300 hover:text-red-600'
+    : variant === 'secondary'
+      ? 'border-[var(--color-accent)]/20 bg-[var(--color-accent)]/8 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/12 hover:border-[var(--color-accent)]/30'
+      : 'border-[var(--color-border-muted)] bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)]'
+
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      loading={loading}
+      onClick={onClick}
+      className={`h-8 w-8 min-w-8 px-0 rounded-full shrink-0 shadow-none ${variantClassName}`}
+    >
+      {icon}
+    </Button>
+  )
 }
 
 function parseProxyInfo(proxyConfig: string): { type: string; server: string; port: number } {
@@ -1217,23 +1487,75 @@ export function ProxyPoolPage() {
     if (!result) return <span className="text-[var(--color-text-muted)] text-xs">-</span>
     if (!result.ok) {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-red-500 truncate max-w-[120px]" title={result.error || '检测失败'}>失败</span>
-          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openIPHealthDetail(record.proxyId) }}>原始</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[10px] rounded-md whitespace-nowrap"
+            onClick={(e) => { e.stopPropagation(); openIPHealthDetail(record.proxyId) }}
+          >
+            详情
+          </Button>
         </div>
       )
     }
 
-    const location = [result.country, result.region, result.city].filter(Boolean).join(' / ')
+    const location = formatIPLocation(result)
     return (
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="min-w-0">
-          <div className="text-xs text-[var(--color-text-primary)] truncate">{result.ip || '-'}</div>
+      <div className="min-w-0 space-y-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="text-xs font-medium text-[var(--color-text-primary)] truncate">{result.ip || '-'}</div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[10px] rounded-md whitespace-nowrap"
+            onClick={(e) => { e.stopPropagation(); openIPHealthDetail(record.proxyId) }}
+          >
+            详情
+          </Button>
+        </div>
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <CountryFlag result={result} />
+            <span className="text-[11px] text-[var(--color-text-muted)] truncate">
+              {location || '地区信息暂缺'}
+            </span>
+          </div>
           <div className="text-[11px] text-[var(--color-text-muted)] truncate">
-            {`fraud ${result.fraudScore} | ${result.isResidential ? '住宅' : '机房'}${location ? ` | ${location}` : ''}`}
+            {`fraud ${result.fraudScore} | ${result.isResidential ? '住宅' : '机房'}${result.asOrganization ? ` | ${result.asOrganization}` : ''}`}
           </div>
         </div>
-        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openIPHealthDetail(record.proxyId) }}>原始</Button>
+      </div>
+    )
+  }
+
+  const renderProxyName = (record: ProxyDisplayInfo) => {
+    const ipHealth = ipHealthMap[record.proxyId]
+    const subtitle = record.proxyConfig === 'direct://'
+      ? '系统直连，无需桥接'
+      : BUILTIN_PROXY_IDS.has(record.proxyId)
+        ? `${record.server}${record.port ? `:${record.port}` : ''}`
+        : ''
+
+    return (
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <CountryFlag result={ipHealth} />
+          <span className="font-medium text-[var(--color-text-primary)] truncate" title={record.proxyName}>
+            {record.proxyName}
+          </span>
+          {BUILTIN_PROXY_IDS.has(record.proxyId) && (
+            <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] border border-[var(--color-border-muted)]">
+              内置
+            </span>
+          )}
+        </div>
+        {subtitle && (
+          <div className="mt-1 text-[11px] text-[var(--color-text-muted)] truncate" title={subtitle}>
+            {subtitle}
+          </div>
+        )}
       </div>
     )
   }
@@ -1254,84 +1576,128 @@ export function ProxyPoolPage() {
         />
       ),
     },
-    { key: 'proxyName', title: '代理名称', width: '180px', sortable: true },
-    { key: 'groupName', title: '分组', width: '100px', sortable: true, render: (val) => val ? <span className="px-1.5 py-0.5 text-xs rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)]">{val}</span> : '-' },
+    {
+      key: 'proxyName',
+      title: '节点',
+      width: '220px',
+      sortable: true,
+      render: (_, record) => renderProxyName(record),
+    },
+    {
+      key: 'groupName',
+      title: '分组',
+      width: '112px',
+      sortable: true,
+      render: (val) => val ? (
+        <span
+          className="inline-flex max-w-full items-center px-2 py-0.5 text-[11px] rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] truncate"
+          title={String(val)}
+        >
+          {String(val)}
+        </span>
+      ) : '-',
+    },
     {
       key: 'source',
       title: '来源',
-      width: '180px',
+      width: '148px',
       render: (_, record) => {
         if (!record.sourceUrl) return '-'
         const host = sourceHostLabel(record.sourceUrl)
         return (
-          <div className="text-xs leading-5">
+          <div className="min-w-0 text-xs leading-5">
             <div className="text-[var(--color-text-primary)] truncate" title={record.sourceUrl}>{host}</div>
-            <div className="text-[var(--color-text-muted)]">
+            <div className="text-[11px] text-[var(--color-text-muted)] truncate">
               {globalAutoRefreshEnabled ? `自动刷新 ${globalRefreshInterval} 分钟（全局）` : '手动刷新'}
             </div>
           </div>
         )
       },
     },
-    { key: 'type', title: '类型', width: '90px', sortable: true },
-    { key: 'server', title: '服务器', width: '180px', sortable: true },
-    { key: 'port', title: '端口', width: '80px', sortable: true, render: (val) => val || '-' },
+    {
+      key: 'type',
+      title: '类型',
+      width: '96px',
+      sortable: true,
+      render: (val) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-muted)]">
+          {String(val || '-').toUpperCase()}
+        </span>
+      ),
+    },
+    {
+      key: 'server',
+      title: '服务器',
+      width: '220px',
+      sortable: true,
+      render: (val) => (
+        <span className="block text-sm text-[var(--color-text-secondary)] truncate" title={String(val || '-')}>
+          {String(val || '-')}
+        </span>
+      ),
+    },
+    { key: 'port', title: '端口', width: '80px', sortable: true, align: 'center', render: (val) => val || '-' },
     {
       key: 'latency',
       title: '延迟',
       width: '90px',
+      align: 'center',
       sortable: true,
       render: (_, record) => renderLatency(record),
     },
     {
       key: 'ipHealth',
       title: 'IP健康',
-      width: '280px',
+      width: '268px',
       render: (_, record) => renderIPHealth(record),
     },
     {
       key: 'actions',
       title: '操作',
-      width: '320px',
+      width: '196px',
+      align: 'right',
       render: (_, record) => {
         const isBuiltin = BUILTIN_PROXY_IDS.has(record.proxyId)
         const hasSource = !!record.sourceId && !!record.sourceUrl
         return (
-          <div className="flex gap-2">
+          <div className="flex items-center justify-end gap-1.5 flex-nowrap">
             {hasSource && (
-              <Button
-                size="sm"
+              <ActionIconButton
+                title="刷新订阅"
                 variant="secondary"
+                icon={<RefreshCw className="w-3.5 h-3.5" />}
                 onClick={(e) => { e.stopPropagation(); void refreshSingleSource(record.sourceId, false) }}
                 loading={refreshingSourceIds.has(record.sourceId)}
-              >
-                刷新订阅
-              </Button>
+              />
             )}
-            <Button
-              size="sm" variant="ghost"
+            <ActionIconButton
+              title="测速"
+              icon={<Gauge className="w-3.5 h-3.5" />}
               onClick={(e) => { e.stopPropagation(); handleTestOne(record) }}
               loading={latencyMap[record.proxyId] === -1}
               disabled={record.proxyConfig === 'direct://'}
-            >测速</Button>
-            <Button
-              size="sm" variant="ghost"
+            />
+            <ActionIconButton
+              title="IP 健康"
+              icon={<Shield className="w-3.5 h-3.5" />}
               onClick={(e) => { e.stopPropagation(); handleCheckOneIPHealth(record) }}
               loading={checkingIPHealthIds.has(record.proxyId)}
               disabled={record.proxyConfig === 'direct://'}
-            >IP健康</Button>
-            <Button
-              size="sm" variant="ghost"
+            />
+            <ActionIconButton
+              title={isBuiltin ? '内置代理不可编辑' : '编辑'}
+              icon={<Pencil className="w-3.5 h-3.5" />}
               disabled={isBuiltin}
-              title={isBuiltin ? '内置代理不可编辑' : undefined}
+              loading={false}
               onClick={(e) => { e.stopPropagation(); if (!isBuiltin) handleEdit(record) }}
-            >编辑</Button>
-            <Button
-              size="sm" variant="danger"
+            />
+            <ActionIconButton
+              title={isBuiltin ? '内置代理不可删除' : '删除'}
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+              variant="danger"
               disabled={isBuiltin}
-              title={isBuiltin ? '内置代理不可删除' : undefined}
               onClick={(e) => { e.stopPropagation(); if (!isBuiltin) handleDeleteClick(record.proxyId) }}
-            >删除</Button>
+            />
           </div>
         )
       },
@@ -1355,13 +1721,12 @@ export function ProxyPoolPage() {
       title: '操作',
       width: '96px',
       render: (_, record) => (
-        <Button
-          size="sm"
+        <ActionIconButton
+          title="移除"
+          icon={<Trash2 className="w-3.5 h-3.5" />}
           variant="danger"
           onClick={() => handleRemovePreviewProxy(record.proxyId)}
-        >
-          删除
-        </Button>
+        />
       ),
     },
   ]
@@ -1540,12 +1905,12 @@ export function ProxyPoolPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">代理池配置</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">管理代理配置，支持 Clash 订阅、HTTP、HTTPS、SOCKS5</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">管理代理配置，支持 Clash 订阅、HTTP、HTTPS、SOCKS5、AnyTLS 等节点</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="secondary"
@@ -1562,67 +1927,73 @@ export function ProxyPoolPage() {
       </div>
 
       <Card>
-        <div className="flex items-center gap-3 mb-4">
-          <Input
-            value={filterKeyword}
-            onChange={e => setFilterKeyword(e.target.value)}
-            placeholder="搜索名称或服务器..."
-            style={{ width: '220px' }}
-          />
-          <select
-            value={filterProtocol}
-            onChange={e => setFilterProtocol(e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-          >
-            {protocolOptions.map(p => (
-              <option key={p} value={p}>{p === 'all' ? '全部协议' : p.toUpperCase()}</option>
-            ))}
-          </select>
-          <select
-            value={filterGroup}
-            onChange={e => setFilterGroup(e.target.value)}
-            className="px-3 py-1.5 text-sm rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-          >
-            <option value="all">全部分组</option>
-            {groups.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-          {(filterProtocol !== 'all' || filterKeyword || filterGroup !== 'all') && (
-            <Button size="sm" variant="ghost" onClick={() => { setFilterProtocol('all'); setFilterKeyword(''); setFilterGroup('all') }}>清除筛选</Button>
-          )}
-          <div className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 py-1.5">
-            <span className="text-xs text-[var(--color-text-muted)]">全局自动刷新</span>
-            <Switch
-              checked={globalAutoRefreshEnabled}
-              onChange={(checked) => setGlobalAutoRefreshEnabled(checked)}
-            />
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Input
-              type="number"
-              min={5}
-              max={1440}
-              value={globalRefreshIntervalM}
-              onChange={e => setGlobalRefreshIntervalM(e.target.value)}
-              className="w-24"
-              disabled={!globalAutoRefreshEnabled}
+              value={filterKeyword}
+              onChange={e => setFilterKeyword(e.target.value)}
+              placeholder="搜索名称或服务器..."
+              style={{ width: '240px' }}
             />
-            <span className="text-xs text-[var(--color-text-muted)]">分钟</span>
+            <select
+              value={filterProtocol}
+              onChange={e => setFilterProtocol(e.target.value)}
+              className="h-10 px-3 text-sm rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+            >
+              {protocolOptions.map(p => (
+                <option key={p} value={p}>{p === 'all' ? '全部协议' : p.toUpperCase()}</option>
+              ))}
+            </select>
+            <select
+              value={filterGroup}
+              onChange={e => setFilterGroup(e.target.value)}
+              className="h-10 px-3 text-sm rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+            >
+              <option value="all">全部分组</option>
+              {groups.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            {(filterProtocol !== 'all' || filterKeyword || filterGroup !== 'all') && (
+              <Button size="sm" variant="ghost" className="h-10 px-3" onClick={() => { setFilterProtocol('all'); setFilterKeyword(''); setFilterGroup('all') }}>清除筛选</Button>
+            )}
           </div>
           <div className="flex-1" />
-          {filteredList.length > 0 && (
-            <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
-                onChange={handleToggleAll}
-                className="w-4 h-4 rounded border-[var(--color-border)] accent-[var(--color-primary)] cursor-pointer"
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2">
+              <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">全局自动刷新</span>
+              <Switch
+                checked={globalAutoRefreshEnabled}
+                onChange={(checked) => setGlobalAutoRefreshEnabled(checked)}
               />
-              全选
-            </label>
-          )}
+              <Input
+                type="number"
+                min={5}
+                max={1440}
+                value={globalRefreshIntervalM}
+                onChange={e => setGlobalRefreshIntervalM(e.target.value)}
+                className="w-20"
+                disabled={!globalAutoRefreshEnabled}
+              />
+              <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">分钟</span>
+            </div>
+            {filteredList.length > 0 && (
+              <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] cursor-pointer select-none whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
+                  onChange={handleToggleAll}
+                  className="w-4 h-4 rounded border-[var(--color-border)] accent-[var(--color-primary)] cursor-pointer"
+                />
+                全选
+              </label>
+            )}
+          </div>
           {selectedCount > 0 && (
-            <Button size="sm" variant="danger" onClick={() => setBatchDeleteConfirmOpen(true)}>
-              删除所选 ({selectedCount})
-            </Button>
+            <div className="flex items-center">
+              <Button size="sm" variant="danger" onClick={() => setBatchDeleteConfirmOpen(true)}>
+                删除所选 ({selectedCount})
+              </Button>
+            </div>
           )}
         </div>
         <Table
@@ -1819,7 +2190,7 @@ export function ProxyPoolPage() {
             </datalist>
           </FormItem>
           <FormItem label="代理配置">
-            <Textarea value={editForm.proxyConfig} onChange={e => setEditForm(prev => ({ ...prev, proxyConfig: e.target.value }))} rows={10} placeholder="支持 Clash YAML、http://、https://、socks5:// 代理配置" />
+            <Textarea value={editForm.proxyConfig} onChange={e => setEditForm(prev => ({ ...prev, proxyConfig: e.target.value }))} rows={10} placeholder="支持 Clash YAML、http://、https://、socks5://、anytls:// 等代理配置" />
           </FormItem>
           <FormItem label="DNS 服务器（可选）">
             <Textarea value={editForm.dnsServers} onChange={e => setEditForm(prev => ({ ...prev, dnsServers: e.target.value }))} rows={6}

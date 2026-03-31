@@ -103,7 +103,7 @@ export function Table<T extends Record<string, any>>({
       className={clsx('overflow-auto', className)}
       style={{ maxHeight }}
     >
-      <table className="min-w-full">
+      <table className="w-full min-w-full table-fixed">
         <thead className={clsx(stickyHeader && 'sticky top-0 z-10')}>
           <tr>
             {columns.map((col) => (
@@ -119,7 +119,14 @@ export function Table<T extends Record<string, any>>({
                 style={{ width: col.width }}
                 onClick={() => col.sortable && handleSortClick(col)}
               >
-                <span className="flex items-center">
+                <span
+                  className={clsx(
+                    'flex items-center gap-0.5',
+                    col.align === 'center' && 'justify-center',
+                    col.align === 'right' && 'justify-end',
+                    !col.align && 'justify-start',
+                  )}
+                >
                   {col.title}
                   {renderSortIcon(col)}
                 </span>
@@ -155,7 +162,7 @@ export function Table<T extends Record<string, any>>({
                   <td
                     key={col.key}
                     className={clsx(
-                      'px-4 py-3.5 text-sm text-[var(--color-text-secondary)]',
+                      'px-4 py-4 text-sm text-[var(--color-text-secondary)] align-middle',
                       col.align === 'center' && 'text-center',
                       col.align === 'right' && 'text-right'
                     )}
