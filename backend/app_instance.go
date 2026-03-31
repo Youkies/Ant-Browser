@@ -220,6 +220,9 @@ func (a *App) browserInstanceStartInternal(profileId string, extraLaunchArgs []s
 	} else if effectiveProxy != "" {
 		args = append(args, fmt.Sprintf("--proxy-server=%s", effectiveProxy))
 	}
+	if len(normalizedStartURLs) == 0 && profile.InitialVerificationDone {
+		args = ensureRestoreLastSessionLaunchArg(args)
+	}
 	args = append(args, profile.FingerprintArgs...)
 	args = append(args, sanitizedProfileLaunchArgs...)
 	args = append(args, sanitizedExtraLaunchArgs...)

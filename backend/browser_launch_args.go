@@ -18,6 +18,15 @@ var managedLaunchArgSpecs = []managedLaunchArgSpec{
 	{prefix: "--proxy-server", takesValue: true},
 }
 
+func ensureRestoreLastSessionLaunchArg(args []string) []string {
+	for _, arg := range args {
+		if strings.EqualFold(strings.TrimSpace(arg), "--restore-last-session") {
+			return args
+		}
+	}
+	return append(args, "--restore-last-session")
+}
+
 func sanitizeManagedLaunchArgs(args []string) ([]string, []string) {
 	if len(args) == 0 {
 		return nil, nil

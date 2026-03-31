@@ -33,6 +33,22 @@ func TestEnsureNewWindowLaunchArgAddsFlagOnce(t *testing.T) {
 	}
 }
 
+func TestEnsureRestoreLastSessionLaunchArgAddsFlagOnce(t *testing.T) {
+	t.Parallel()
+
+	got := ensureRestoreLastSessionLaunchArg([]string{"--lang=en-US"})
+	want := []string{"--lang=en-US", "--restore-last-session"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ensureRestoreLastSessionLaunchArg mismatch: got=%v want=%v", got, want)
+	}
+
+	got = ensureRestoreLastSessionLaunchArg([]string{"--restore-last-session", "--lang=en-US"})
+	want = []string{"--restore-last-session", "--lang=en-US"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ensureRestoreLastSessionLaunchArg should not duplicate: got=%v want=%v", got, want)
+	}
+}
+
 func TestIsBrowserProfileLive(t *testing.T) {
 	t.Parallel()
 

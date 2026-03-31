@@ -27,7 +27,7 @@ const pageTitleMap = new Map(
 
 function resolvePageTitle(pathname: string): string {
   if (pageTitleMap.has(pathname)) {
-    return pageTitleMap.get(pathname) || 'Ant Browser'
+    return pageTitleMap.get(pathname) || 'Youkies Browser'
   }
 
   const matchedDynamicTitle = dynamicPageTitles.find((item) => item.match(pathname))
@@ -35,7 +35,7 @@ function resolvePageTitle(pathname: string): string {
     return matchedDynamicTitle.title
   }
 
-  return 'Ant Browser'
+  return 'Youkies Browser'
 }
 
 function NotificationDropdown({

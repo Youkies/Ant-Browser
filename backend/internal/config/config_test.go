@@ -30,7 +30,7 @@ browser: {}
 	if cfg.Database.SQLite.Path != "data/app.db" {
 		t.Fatalf("Database.SQLite.Path 鏈ˉ榻? got=%q", cfg.Database.SQLite.Path)
 	}
-	if cfg.App.Name != "Ant Browser" {
+	if cfg.App.Name != "Youkies Browser" {
 		t.Fatalf("App.Name 鏈ˉ榻? got=%q", cfg.App.Name)
 	}
 	if cfg.Runtime.MaxMemoryMB != 0 || cfg.Runtime.GCPercent != 100 {

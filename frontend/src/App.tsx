@@ -216,7 +216,7 @@ function CloseConfirmModal() {
             <>
               <Button
                 variant="secondary"
-                className="w-full !bg-[#f3f4f6] !border-[#e5e7eb] !text-[var(--color-text-primary)] hover:!bg-[#e5e7eb]"
+                className="w-full"
                 onClick={supportsTray ? handleMinimize : closeModal}
                 disabled={quitting}
               >

@@ -584,7 +584,7 @@ function Publish-Linux {
 }
 
 try {
-    Write-Section "Ant Browser - 发布打包脚本"
+    Write-Section "Youkies Browser - 发布打包脚本"
     Write-Host ""
     Write-Host "当前工作目录: $repoRoot"
     Write-Host ""

@@ -345,7 +345,7 @@ func DefaultConfig() *Config {
 			},
 		},
 		App: AppConfig{
-			Name: "Ant Browser",
+			Name: "Youkies Browser",
 			Window: WindowConfig{
 				Width:     1750,
 				Height:    1000,

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the macOS packaging plan for Ant Browser.
+This document defines the macOS packaging plan for Youkies Browser.
 
 The goal is to turn the current codebase into a macOS build that can:
 
@@ -52,9 +52,9 @@ The repository now includes the first macOS writable-state implementation for ap
 
 The current initial macOS packaging scaffold intentionally places helper binaries and seed files under:
 
-- `Ant Browser.app/Contents/MacOS/bin`
-- `Ant Browser.app/Contents/MacOS/config.yaml`
-- `Ant Browser.app/Contents/MacOS/chrome/README.md`
+- `Youkies Browser.app/Contents/MacOS/bin`
+- `Youkies Browser.app/Contents/MacOS/config.yaml`
+- `Youkies Browser.app/Contents/MacOS/chrome/README.md`
 
 This is not the prettiest final bundle layout, but it matches the current runtime path resolution and avoids a larger refactor in Phase 1.
 
@@ -104,9 +104,9 @@ Why:
 
 Recommended structure inside the built app:
 
-- `Ant Browser.app/Contents/MacOS/ant-chrome`
-- `Ant Browser.app/Contents/Resources/bin/xray`
-- `Ant Browser.app/Contents/Resources/bin/sing-box`
+- `Youkies Browser.app/Contents/MacOS/ant-chrome`
+- `Youkies Browser.app/Contents/Resources/bin/xray`
+- `Youkies Browser.app/Contents/Resources/bin/sing-box`
 - optional placeholder `chrome/README.md` if you want to keep behavior aligned with Linux
 
 ### User-Writable State
