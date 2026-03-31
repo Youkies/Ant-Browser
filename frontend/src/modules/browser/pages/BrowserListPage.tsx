@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Activity, CheckCircle, ChevronDown, ChevronRight, ChevronUp, Copy, Edit2, ExternalLink, FileText, Key, Pencil, Play, Plus, RefreshCw, RotateCcw, Settings, Sliders, Square, Star, Trash2, XCircle, Gift, LayoutGrid, List } from 'lucide-react'
 import { Badge, Button, Card, FormItem, Input, Modal, StatCard, Table, Textarea, toast } from '../../../shared/components'
 import { fetchDashboardStats, redeemCDKey, redeemGithubStar, reloadConfig } from '../../dashboard/api'
 import type { TableColumn } from '../../../shared/components/Table'
-import type { BrowserCore, BrowserCoreInput, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount } from '../types'
+import type { BrowserCore, BrowserCoreInput, BrowserProfile, BrowserProxy, BrowserSettings, BrowserGroupWithCount, ProxyIPHealthResult } from '../types'
 import { InstanceFilterBar, EMPTY_FILTERS } from '../components/InstanceFilterBar'
 import type { InstanceFilters } from '../components/InstanceFilterBar'
 import { KeywordsModal } from '../components/KeywordsModal'
+import { ProxyCountryFlag, formatIPLocation, readProxyIPHealthCache, resolveProxyIPHealthResult } from '../components/ProxyCountryFlag'
 import { EventsOn, BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 import { PROJECT_GITHUB_URL } from '../../../config/links'
 import { resolveActionErrorMessage, resolveActionFeedback } from '../utils/actionErrors'
@@ -33,6 +34,45 @@ import {
 } from '../api'
 
 // 批量操作工具栏
+type ActionButtonVariant = 'ghost' | 'secondary' | 'danger'
+
+function ActionIconButton({
+  title,
+  icon,
+  onClick,
+  variant = 'ghost',
+  disabled = false,
+  loading = false,
+}: {
+  title: string
+  icon: ReactNode
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void
+  variant?: ActionButtonVariant
+  disabled?: boolean
+  loading?: boolean
+}) {
+  const variantClassName = variant === 'danger'
+    ? 'border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:border-red-300 hover:text-red-600'
+    : variant === 'secondary'
+      ? 'border-[var(--color-accent)]/20 bg-[var(--color-accent)]/8 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/12 hover:border-[var(--color-accent)]/30'
+      : 'border-[var(--color-border-muted)] bg-[var(--color-bg-surface)] text-[var(--color-text-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)]'
+
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      loading={loading}
+      onClick={onClick}
+      className={`h-9 w-9 min-w-9 px-0 rounded-full shrink-0 shadow-none ${variantClassName}`}
+    >
+      {icon}
+    </Button>
+  )
+}
+
 function BatchToolbar({
   selectedCount,
   totalCount,
@@ -138,8 +178,8 @@ function LaunchCodeCell({ profileId, code, onRefresh }: { profileId: string; cod
   if (!code) return <span className="text-[var(--color-text-muted)] text-xs">-</span>
 
   return (
-    <div className="flex items-center gap-1">
-      <code className="text-xs font-mono bg-[var(--color-bg-secondary)] px-1.5 py-0.5 rounded text-[var(--color-accent)]">{code}</code>
+    <div className="flex items-center gap-1 min-w-0">
+      <code className="text-xs font-mono bg-[var(--color-bg-secondary)] px-1.5 py-0.5 rounded text-[var(--color-accent)] truncate max-w-[72px]">{code}</code>
       <button onClick={handleCopy} className="p-0.5 hover:text-[var(--color-accent)] text-[var(--color-text-muted)] transition-colors" title="复制">
         <Copy className="w-3 h-3" />
       </button>
@@ -168,36 +208,49 @@ function KeywordInlineRow({ keywords }: { keywords: string[] }) {
     return <span className="text-xs text-[var(--color-text-muted)] italic">暂无关键字</span>
   }
 
+  const preview = keywords.slice(0, 2)
+
   return (
-    <div className="flex items-start gap-4 w-full">
+    <div className="min-w-0 space-y-1">
       <div
         ref={cRef}
-        className={`flex flex-wrap gap-2 flex-1 transition-all duration-300 ${expanded ? '' : 'overflow-hidden max-h-[32px]'}`}
+        className="flex flex-wrap gap-1.5 min-w-0"
       >
-        {keywords.map((kw, i) => (
+        {preview.map((kw, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs
-              bg-[var(--color-bg-surface)] border border-[var(--color-border-default)]
-              text-[var(--color-text-secondary)] max-w-[200px]"
+            className="inline-flex items-center max-w-full gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[var(--color-bg-surface)] border border-[var(--color-border-default)] text-[var(--color-text-secondary)]"
             title={kw}
           >
-            <span className="text-[var(--color-text-muted)] font-mono shrink-0">{i + 1}.</span>
             <span className="truncate">{kw}</span>
           </span>
         ))}
       </div>
-      {isOverflowing && (
+      {(keywords.length > 2 || isOverflowing) && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="shrink-0 flex items-center gap-1 text-xs font-medium text-[var(--color-accent)] hover:text-indigo-400 mt-1 focus:outline-none"
+          className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-[var(--color-accent)] hover:text-indigo-400 focus:outline-none"
+          title={expanded ? '收起关键字' : `共 ${keywords.length} 个关键字`}
         >
           {expanded ? (
-            <>收回 <ChevronUp className="w-3.5 h-3.5" /></>
+            <>收起 <ChevronUp className="w-3 h-3" /></>
           ) : (
-            <>展开详情 <ChevronDown className="w-3.5 h-3.5" /></>
+            <>+{keywords.length - preview.length} <ChevronDown className="w-3 h-3" /></>
           )}
         </button>
+      )}
+      {expanded && (
+        <div className="flex flex-wrap gap-1.5">
+          {keywords.slice(preview.length).map((kw, i) => (
+            <span
+              key={`${kw}-${i}`}
+              className="inline-flex items-center max-w-full gap-1 px-2 py-0.5 rounded-md text-[11px] bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] text-[var(--color-text-secondary)]"
+              title={kw}
+            >
+              <span className="truncate">{kw}</span>
+            </span>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -232,6 +285,7 @@ export function BrowserListPage() {
   const [headerCollapsed, setHeaderCollapsed] = useState(() => {
     return localStorage.getItem('browser:headerCollapsed') === 'true'
   })
+  const [proxyIPHealthMap, setProxyIPHealthMap] = useState<Record<string, ProxyIPHealthResult>>(() => readProxyIPHealthCache())
 
   // 持久化筛选状态
   useEffect(() => {
@@ -246,6 +300,16 @@ export function BrowserListPage() {
   useEffect(() => {
     localStorage.setItem('browser:headerCollapsed', String(headerCollapsed))
   }, [headerCollapsed])
+
+  useEffect(() => {
+    setProxyIPHealthMap(readProxyIPHealthCache())
+    const off = EventsOn('proxy:iphealth:result', (data: ProxyIPHealthResult) => {
+      setProxyIPHealthMap(prev => ({ ...prev, [data.proxyId]: data }))
+    })
+    return () => {
+      off?.()
+    }
+  }, [])
 
   // 代理不支持弹窗
   const [proxyErrorModal, setProxyErrorModal] = useState(false)
@@ -267,6 +331,7 @@ export function BrowserListPage() {
   const [copyModal, setCopyModal] = useState<{ open: boolean; profile: BrowserProfile | null }>({ open: false, profile: null })
   const [copyName, setCopyName] = useState('')
   const [copying, setCopying] = useState(false)
+  const [detailModal, setDetailModal] = useState<{ open: boolean; profile: BrowserProfile | null }>({ open: false, profile: null })
 
   const openCopyModal = (profile: BrowserProfile) => {
     setCopyName(profile.profileName + ' (副本)')
@@ -275,6 +340,14 @@ export function BrowserListPage() {
   const closeCopyModal = () => {
     setCopyModal({ open: false, profile: null })
     setCopyName('')
+  }
+
+  const openDetailModal = (profile: BrowserProfile) => {
+    setDetailModal({ open: true, profile })
+  }
+
+  const closeDetailModal = () => {
+    setDetailModal({ open: false, profile: null })
   }
 
   // 基础配置弹窗
@@ -470,6 +543,13 @@ export function BrowserListPage() {
       return cores.find(core => core.coreId === coreId) || null
     }
     return defaultCore
+  }
+
+  const getProxyById = (proxyId?: string) => proxies.find(item => item.proxyId === proxyId)
+
+  const getProxyHealthForProfile = (profile: BrowserProfile) => {
+    const proxy = getProxyById(profile.proxyId)
+    return resolveProxyIPHealthResult(proxy, proxyIPHealthMap)
   }
 
   const getProfileCoreLabel = (profile: BrowserProfile) => {
@@ -839,6 +919,27 @@ export function BrowserListPage() {
     await handleClaimStarGift()
   }
 
+  const renderProxyCell = (record: BrowserProfile) => {
+    const proxy = getProxyById(record.proxyId)
+    const health = getProxyHealthForProfile(record)
+    const location = formatIPLocation(health)
+    const label = proxy?.proxyName || record.proxyId || '-'
+
+    return (
+      <div className="min-w-0 space-y-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <ProxyCountryFlag result={health} />
+          <span className="block text-xs truncate" title={String(label)}>{label}</span>
+        </div>
+        {location && (
+          <div className="text-[11px] text-[var(--color-text-muted)] truncate" title={location}>
+            {location}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const columns: TableColumn<BrowserProfile>[] = [
     {
       key: 'selection',
@@ -861,15 +962,17 @@ export function BrowserListPage() {
           className="w-4 h-4 rounded cursor-pointer accent-[var(--color-accent)]"
           checked={selectedIds.has(record.profileId)}
           onChange={() => toggleSelect(record.profileId)}
+          onClick={(event) => event.stopPropagation()}
         />
       ),
     },
     {
       key: 'profileName',
       title: '实例名称',
+      width: 180,
       render: (value, record) => (
         <div className="flex flex-col gap-1">
-          <Link className="text-[var(--color-accent)] text-sm font-medium hover:underline" to={`/browser/detail/${record.profileId}`}>
+          <Link className="text-[var(--color-accent)] text-sm font-medium hover:underline truncate" to={`/browser/detail/${record.profileId}`} title={String(value || '')} onClick={(event) => event.stopPropagation()}>
             {value}
           </Link>
           {record.tags && record.tags.length > 0 && (
@@ -883,7 +986,7 @@ export function BrowserListPage() {
     {
       key: 'running',
       title: '状态',
-      width: 100,
+      width: 92,
       render: (_, record) => {
         const status = getProfileStatus(record)
         return <Badge variant={status.variant} dot>{status.label}</Badge>
@@ -892,37 +995,28 @@ export function BrowserListPage() {
     {
       key: 'coreId',
       title: '核心',
+      width: 150,
       render: (_, record) => {
-        return <span className="text-xs">{getProfileCoreLabel(record)}</span>
+        const label = getProfileCoreLabel(record)
+        return <span className="block text-xs truncate" title={label}>{label}</span>
       },
     },
     {
       key: 'proxyId',
       title: '代理',
-      render: (value) => {
-        const proxy = proxies.find(p => p.proxyId === value)
-        return <span className="text-xs">{proxy ? proxy.proxyName : value || '-'}</span>
-      },
-    },
-    {
-      key: 'launchCode',
-      title: '快捷打开码',
-      render: (value, record) => <LaunchCodeCell profileId={record.profileId} code={value || ''} onRefresh={loadProfiles} />,
+      width: 220,
+      render: (_, record) => renderProxyCell(record),
     },
     {
       key: 'keywords',
       title: '关键字',
-      width: 200,
+      width: 124,
       render: (value) => <KeywordInlineRow keywords={value || []} />,
-    },
-    {
-      key: 'updatedAt',
-      title: '上次更新',
-      render: formatTime,
     },
     {
       key: 'actions',
       title: '操作',
+      width: 248,
       align: 'right',
       render: (_, record) => {
         const isStarting = isProfileStarting(record.profileId)
@@ -930,21 +1024,31 @@ export function BrowserListPage() {
         const isBusy = isProfileBusy(record.profileId)
 
         return (
-          <div className="flex justify-end gap-1">
+          <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
             {record.running ? (
-              <Button size="sm" variant="secondary" onClick={() => handleStop(record.profileId)} title="停止" loading={isStopping}>
-                {!isStopping && <Square className="w-3.5 h-3.5" />}
-              </Button>
+              <ActionIconButton
+                title="停止"
+                variant="secondary"
+                onClick={(event) => { event.stopPropagation(); void handleStop(record.profileId) }}
+                loading={isStopping}
+                icon={<Square className="w-3.5 h-3.5" />}
+              />
             ) : (
-              <Button size="sm" onClick={() => handleStart(record.profileId)} title="启动" loading={isStarting}>
-                {!isStarting && <Play className="w-3.5 h-3.5 fill-current" />}
-              </Button>
+              <ActionIconButton
+                title="启动"
+                variant="secondary"
+                onClick={(event) => { event.stopPropagation(); void handleStart(record.profileId) }}
+                loading={isStarting}
+                icon={<Play className="w-3.5 h-3.5 fill-current" />}
+              />
             )}
-            <Button size="sm" variant="ghost" onClick={() => handleRestart(record.profileId)} title="重启" disabled={isBusy}><RotateCcw className="w-3.5 h-3.5" /></Button>
-            <Button size="sm" variant="ghost" onClick={() => openKwModal(record)} title="关键字" disabled={isBusy}><Key className="w-3.5 h-3.5" /></Button>
-            <Link to={`/browser/edit/${record.profileId}`}><Button size="sm" variant="ghost" title="配置" disabled={isBusy}><Settings className="w-3.5 h-3.5" /></Button></Link>
-            <Button size="sm" variant="ghost" onClick={() => openCopyModal(record)} title="克隆" disabled={isBusy}><Copy className="w-3.5 h-3.5" /></Button>
-            <Button size="sm" variant="ghost" onClick={() => handleDelete(record.profileId)} title="删除" disabled={isBusy}><Trash2 className="w-3.5 h-3.5 text-red-500" /></Button>
+            <ActionIconButton title="重启" onClick={(event) => { event.stopPropagation(); void handleRestart(record.profileId) }} disabled={isBusy} icon={<RotateCcw className="w-3.5 h-3.5" />} />
+            <ActionIconButton title="关键字" onClick={(event) => { event.stopPropagation(); openKwModal(record) }} disabled={isBusy} icon={<Key className="w-3.5 h-3.5" />} />
+            <Link to={`/browser/edit/${record.profileId}`} onClick={(event) => event.stopPropagation()}>
+              <ActionIconButton title="配置" onClick={(event) => { event.stopPropagation() }} disabled={isBusy} icon={<Settings className="w-3.5 h-3.5" />} />
+            </Link>
+            <ActionIconButton title="克隆" onClick={(event) => { event.stopPropagation(); openCopyModal(record) }} disabled={isBusy} icon={<Copy className="w-3.5 h-3.5" />} />
+            <ActionIconButton title="删除" variant="danger" onClick={(event) => { event.stopPropagation(); void handleDelete(record.profileId) }} disabled={isBusy} icon={<Trash2 className="w-3.5 h-3.5" />} />
           </div>
         )
       },
@@ -1059,6 +1163,7 @@ export function BrowserListPage() {
               columns={columns}
               data={filteredProfiles}
               rowKey="profileId"
+              onRowClick={openDetailModal}
             />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[500px] p-4 items-start content-start">
@@ -1159,6 +1264,75 @@ export function BrowserListPage() {
           )}
         </div>
       </Card>
+
+      {detailModal.profile && (
+        <Modal
+          open={detailModal.open}
+          onClose={closeDetailModal}
+          title={`实例详情 · ${detailModal.profile.profileName}`}
+          width="760px"
+          footer={
+            <>
+              <Button variant="secondary" onClick={closeDetailModal}>关闭</Button>
+              <Link to={`/browser/detail/${detailModal.profile.profileId}`} onClick={closeDetailModal}>
+                <Button>打开详情页</Button>
+              </Link>
+            </>
+          }
+        >
+          {(() => {
+            const profile = detailModal.profile!
+            const status = getProfileStatus(profile)
+            const coreLabel = getProfileCoreLabel(profile)
+            const proxy = getProxyById(profile.proxyId)
+            const proxyHealth = getProxyHealthForProfile(profile)
+            const proxyLocation = formatIPLocation(proxyHealth)
+
+            return (
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={status.variant} dot>{status.label}</Badge>
+                  {profile.tags?.map(tag => <Badge variant="default" key={tag}>{tag}</Badge>)}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                    <div className="text-xs text-[var(--color-text-muted)]">代理</div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ProxyCountryFlag result={proxyHealth} className="w-5 h-4 rounded-[4px] shadow-sm ring-1 ring-black/5" />
+                      <span className="text-sm font-medium text-[var(--color-text-primary)] truncate" title={proxy?.proxyName || profile.proxyId || '-'}>
+                        {proxy?.proxyName || profile.proxyId || '-'}
+                      </span>
+                    </div>
+                    {proxyLocation && (
+                      <div className="text-xs text-[var(--color-text-muted)] truncate" title={proxyLocation}>{proxyLocation}</div>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                    <div className="text-xs text-[var(--color-text-muted)]">内核</div>
+                    <div className="text-sm font-medium text-[var(--color-text-primary)] break-all">{coreLabel}</div>
+                  </div>
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                    <div className="text-xs text-[var(--color-text-muted)]">快捷打开码</div>
+                    <div className="pt-1">
+                      <LaunchCodeCell profileId={profile.profileId} code={profile.launchCode || ''} onRefresh={() => { void loadProfiles() }} />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                    <div className="text-xs text-[var(--color-text-muted)]">上次更新</div>
+                    <div className="text-sm font-medium text-[var(--color-text-primary)]">{formatTime(profile.updatedAt)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-2">
+                  <div className="text-xs text-[var(--color-text-muted)]">关键字</div>
+                  <KeywordInlineRow keywords={profile.keywords || []} />
+                </div>
+              </div>
+            )
+          })()}
+        </Modal>
+      )}
 
       {/* 基础配置弹窗 */}
       <Modal open={settingsModalOpen} onClose={() => setSettingsModalOpen(false)} title="基础配置" width="700px"

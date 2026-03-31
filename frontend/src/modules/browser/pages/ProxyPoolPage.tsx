@@ -1008,6 +1008,8 @@ export function ProxyPoolPage() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [proxyDetailOpen, setProxyDetailOpen] = useState(false)
+  const [currentProxyDetail, setCurrentProxyDetail] = useState<ProxyDisplayInfo | null>(null)
   const [ipHealthDetailOpen, setIPHealthDetailOpen] = useState(false)
   const [currentIPHealthDetail, setCurrentIPHealthDetail] = useState<ProxyIPHealthResult | null>(null)
   const proxiesRef = useRef<BrowserProxy[]>([])
@@ -1475,6 +1477,11 @@ export function ProxyPoolPage() {
     setIPHealthDetailOpen(true)
   }
 
+  const openProxyDetail = (record: ProxyDisplayInfo) => {
+    setCurrentProxyDetail(record)
+    setProxyDetailOpen(true)
+  }
+
   const renderIPHealth = (record: ProxyDisplayInfo) => {
     if (record.proxyConfig === 'direct://') {
       return <span className="text-[var(--color-text-muted)] text-xs">不适用</span>
@@ -1535,7 +1542,7 @@ export function ProxyPoolPage() {
     const subtitle = record.proxyConfig === 'direct://'
       ? '系统直连，无需桥接'
       : BUILTIN_PROXY_IDS.has(record.proxyId)
-        ? `${record.server}${record.port ? `:${record.port}` : ''}`
+        ? '本地默认代理入口'
         : ''
 
     return (
@@ -1544,6 +1551,9 @@ export function ProxyPoolPage() {
           <CountryFlag result={ipHealth} />
           <span className="font-medium text-[var(--color-text-primary)] truncate" title={record.proxyName}>
             {record.proxyName}
+          </span>
+          <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-muted)]">
+            {String(record.type || '-').toUpperCase()}
           </span>
           {BUILTIN_PROXY_IDS.has(record.proxyId) && (
             <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] border border-[var(--color-border-muted)]">
@@ -1579,7 +1589,7 @@ export function ProxyPoolPage() {
     {
       key: 'proxyName',
       title: '节点',
-      width: '220px',
+      width: '320px',
       sortable: true,
       render: (_, record) => renderProxyName(record),
     },
@@ -1598,46 +1608,6 @@ export function ProxyPoolPage() {
       ) : '-',
     },
     {
-      key: 'source',
-      title: '来源',
-      width: '148px',
-      render: (_, record) => {
-        if (!record.sourceUrl) return '-'
-        const host = sourceHostLabel(record.sourceUrl)
-        return (
-          <div className="min-w-0 text-xs leading-5">
-            <div className="text-[var(--color-text-primary)] truncate" title={record.sourceUrl}>{host}</div>
-            <div className="text-[11px] text-[var(--color-text-muted)] truncate">
-              {globalAutoRefreshEnabled ? `自动刷新 ${globalRefreshInterval} 分钟（全局）` : '手动刷新'}
-            </div>
-          </div>
-        )
-      },
-    },
-    {
-      key: 'type',
-      title: '类型',
-      width: '96px',
-      sortable: true,
-      render: (val) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-muted)]">
-          {String(val || '-').toUpperCase()}
-        </span>
-      ),
-    },
-    {
-      key: 'server',
-      title: '服务器',
-      width: '220px',
-      sortable: true,
-      render: (val) => (
-        <span className="block text-sm text-[var(--color-text-secondary)] truncate" title={String(val || '-')}>
-          {String(val || '-')}
-        </span>
-      ),
-    },
-    { key: 'port', title: '端口', width: '80px', sortable: true, align: 'center', render: (val) => val || '-' },
-    {
       key: 'latency',
       title: '延迟',
       width: '90px',
@@ -1654,7 +1624,7 @@ export function ProxyPoolPage() {
     {
       key: 'actions',
       title: '操作',
-      width: '196px',
+      width: '184px',
       align: 'right',
       render: (_, record) => {
         const isBuiltin = BUILTIN_PROXY_IDS.has(record.proxyId)
@@ -2002,6 +1972,7 @@ export function ProxyPoolPage() {
           rowKey="proxyId"
           loading={loading}
           emptyText="暂无代理配置，点击上方按钮添加或导入"
+          onRowClick={openProxyDetail}
           sortColumn={sortColumn}
           sortOrder={sortOrder}
           onSort={({ column, order }) => {
@@ -2198,6 +2169,81 @@ export function ProxyPoolPage() {
             <p className="text-xs text-[var(--color-text-muted)] mt-1">支持 Clash dns: YAML 格式，主要用于 Clash / 桥接代理；直连 HTTP/SOCKS5 通常不会使用这里的 DNS 配置</p>
           </FormItem>
         </div>
+      </Modal>
+
+      <Modal
+        open={proxyDetailOpen}
+        onClose={() => setProxyDetailOpen(false)}
+        title={currentProxyDetail ? `代理详情 · ${currentProxyDetail.proxyName}` : '代理详情'}
+        width="760px"
+        footer={<Button variant="secondary" onClick={() => setProxyDetailOpen(false)}>关闭</Button>}
+      >
+        {currentProxyDetail && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-muted)]">
+                {String(currentProxyDetail.type || '-').toUpperCase()}
+              </span>
+              {BUILTIN_PROXY_IDS.has(currentProxyDetail.proxyId) && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15">
+                  内置代理
+                </span>
+              )}
+              {currentProxyDetail.groupName && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] border border-[var(--color-border-muted)]">
+                  分组：{currentProxyDetail.groupName}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                <div className="text-xs text-[var(--color-text-muted)]">服务器</div>
+                <div className="text-sm font-medium text-[var(--color-text-primary)] break-all">{currentProxyDetail.server || '-'}</div>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                <div className="text-xs text-[var(--color-text-muted)]">端口</div>
+                <div className="text-sm font-medium text-[var(--color-text-primary)]">{currentProxyDetail.port || '-'}</div>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                <div className="text-xs text-[var(--color-text-muted)]">来源</div>
+                <div className="text-sm font-medium text-[var(--color-text-primary)] break-all">
+                  {currentProxyDetail.sourceUrl ? sourceHostLabel(currentProxyDetail.sourceUrl) : '手动添加'}
+                </div>
+                {currentProxyDetail.sourceUrl && (
+                  <div className="text-xs text-[var(--color-text-muted)] break-all">{currentProxyDetail.sourceUrl}</div>
+                )}
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-1">
+                <div className="text-xs text-[var(--color-text-muted)]">刷新方式</div>
+                <div className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {currentProxyDetail.sourceUrl
+                    ? (currentProxyDetail.sourceAutoRefresh
+                      ? `自动刷新 / ${normalizeRefreshIntervalM(currentProxyDetail.sourceRefreshIntervalM || globalRefreshInterval)} 分钟`
+                      : '手动刷新')
+                    : '不适用'}
+                </div>
+                {currentProxyDetail.sourceLastRefreshAt && (
+                  <div className="text-xs text-[var(--color-text-muted)]">
+                    最近刷新：{new Date(currentProxyDetail.sourceLastRefreshAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs text-[var(--color-text-muted)]">代理配置</div>
+                  <div className="text-sm text-[var(--color-text-primary)]">点击行即可打开详情，小窗下主表只保留高频字段。</div>
+                </div>
+              </div>
+              <pre className="max-h-[260px] overflow-auto text-xs leading-5 rounded-lg bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-3 whitespace-pre-wrap break-all">
+                {currentProxyDetail.proxyConfig}
+              </pre>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal
